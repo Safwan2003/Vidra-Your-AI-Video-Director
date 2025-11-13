@@ -1,0 +1,13 @@
+# Core Libraries
+gradio
+python-dotenv
+
+# AI & ML Libraries
+ollama
+torch
+transformers
+diffusers
+accelerate
+
+# Video Processing
+ffmpeg-python
