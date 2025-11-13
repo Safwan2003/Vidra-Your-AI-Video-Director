@@ -1,13 +1,20 @@
-# Core Libraries
+# Core Gradio
 gradio
-python-dotenv
 
-# AI & ML Libraries
+# LLM Agent
 ollama
-torch
-transformers
-diffusers
-accelerate
 
-# Video Processing
+# Video & Audio Processing
 ffmpeg-python
+soundfile
+
+# Hugging Face AI/ML Libraries
+torch
+diffusers
+transformers
+accelerate
+safetensors
+huggingface_hub
+datasets
+scipy
+Pillow
