@@ -1,37 +1,77 @@
 import gradio as gr
 import os
 import time
+import json
+import ollama # Added ollama import
 
 # --- Placeholder Functions for AI Agents ---
 # In the future, these will be replaced by calls to our actual AI agent modules.
 
 def run_storyboard_agent(prompt):
     """
-    Placeholder for the Storyboard Agent.
-    Takes a prompt and returns a structured storyboard.
+    Storyboard Agent: Uses Ollama to generate a structured JSON storyboard.
     """
-    print(f"Storyboard Agent: Creating storyboard for prompt: '{prompt}'")
-    time.sleep(2) # Simulate work
-    # In a real scenario, this would be a complex JSON object.
-    storyboard = {
-        "title": "Generated Video",
-        "scenes": [
-            {
-                "scene": 1,
-                "script": f"This is the first scene based on your prompt: {prompt}.",
-                "visual_prompt": "A wide shot of a futuristic city skyline at dusk.",
-                "motion_prompt": "The camera slowly pans from left to right."
-            },
-            {
-                "scene": 2,
-                "script": "This is the second scene, showing off the main subject.",
-                "visual_prompt": "A close-up of a sleek, modern gadget on a pedestal.",
-                "motion_prompt": "A subtle glowing effect pulses from the gadget."
-            }
-        ]
-    }
-    print("Storyboard Agent: Done.")
-    return storyboard
+    print(f"Storyboard Agent: Requesting storyboard from Ollama for prompt: '{prompt}'")
+    
+    system_prompt = """
+    You are an expert video director and scriptwriter. Your task is to create a detailed storyboard in JSON format for an animated marketing video.
+    The video should be engaging and professional.
+    
+    The JSON object should have two top-level keys: "title" (string) and "scenes" (array of objects).
+    Each object in the "scenes" array must have the following keys:
+    - "scene": (integer) The scene number.
+    - "script": (string) The voiceover script for this scene. Keep it concise and impactful.
+    - "visual_prompt": (string) A detailed description for an AI image generator (like Stable Diffusion) for this scene's visual. Be descriptive about style, characters, and setting.
+    - "motion_prompt": (string) A detailed description for an AI animation generator (like Open-Sora) for how the visual should animate. Describe camera movement, character actions, or object movements.
+    
+    Ensure the JSON is valid and properly formatted.
+    """
+    
+    try:
+        response = ollama.chat(
+            model='llama3', # Assuming llama3 is pulled. User can change this.
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': prompt}
+            ],
+            format='json' # Request JSON format
+        )
+        
+        # Ollama's response might be a string containing JSON
+        content = response['message']['content']
+        storyboard = json.loads(content)
+        
+        print("Storyboard Agent: Successfully generated storyboard from Ollama.")
+        return storyboard
+        
+    except json.JSONDecodeError as e:
+        print(f"Storyboard Agent Error: Failed to parse JSON from Ollama response: {e}")
+        print(f"Ollama response content: {content}")
+        # Fallback to a default storyboard or raise an error
+        return {
+            "title": "Error Storyboard",
+            "scenes": [
+                {
+                    "scene": 1,
+                    "script": f"Error: Could not generate a valid storyboard. Please check Ollama server and response. Original prompt: {prompt}",
+                    "visual_prompt": "An abstract image representing an error.",
+                    "motion_prompt": "A subtle glitch effect."
+                }
+            ]
+        }
+    except Exception as e:
+        print(f"Storyboard Agent Error: An unexpected error occurred with Ollama: {e}")
+        return {
+            "title": "Error Storyboard",
+            "scenes": [
+                {
+                    "scene": 1,
+                    "script": f"Error: An unexpected error occurred. Original prompt: {prompt}",
+                    "visual_prompt": "An abstract image representing an error.",
+                    "motion_prompt": "A subtle glitch effect."
+                }
+            ]
+        }
 
 def run_art_director_agent(visual_prompt):
     """
