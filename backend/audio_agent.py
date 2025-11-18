@@ -1,5 +1,12 @@
 import torch
-from TTS.api import TTS
+try:
+    from TTS.api import TTS
+    HAS_XTTS = True
+except ImportError:
+    print("⚠️ Coqui TTS not available, using gTTS as fallback")
+    from gtts import gTTS as gTTS_fallback
+    HAS_XTTS = False
+
 from audiocraft.models import MusicGen
 from audiocraft.data.audio import audio_write
 import os
@@ -13,10 +20,10 @@ _music_model = None
 def get_tts_model():
     """
     Lazy load the TTS model.
-    Uses XTTS v2 for high-quality multilingual voice synthesis.
+    Uses XTTS v2 if available, otherwise falls back to gTTS.
     """
     global _tts_model
-    if _tts_model is None:
+    if _tts_model is None and HAS_XTTS:
         print("Loading XTTS v2 model...")
         # XTTS v2 - supports multiple languages and voice cloning
         _tts_model = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
@@ -47,45 +54,49 @@ def get_music_model():
 
 def generate_voiceover(script: str, speaker_wav: str = None, language: str = "en"):
     """
-    Generates a voiceover for a given script using XTTS v2.
+    Generates a voiceover for a given script.
+    Uses XTTS v2 if available, otherwise falls back to gTTS.
     
     Args:
         script: The text to convert to speech
-        speaker_wav: Optional path to reference audio for voice cloning
-        language: Language code (en, es, fr, de, it, pt, pl, tr, ru, nl, cs, ar, zh-cn, ja)
+        speaker_wav: Optional path to reference audio for voice cloning (XTTS only)
+        language: Language code (en, es, fr, de, it, pt, etc.)
     
     Returns:
         Local file path to the generated audio
     """
     print(f"Generating voiceover for: '{script[:50]}...'")
     
-    # Get TTS model
-    tts = get_tts_model()
-    
     # Output path
     output_dir = "outputs/audio"
     os.makedirs(output_dir, exist_ok=True)
-    filename = f"voiceover_{uuid.uuid4()}.wav"
+    filename = f"voiceover_{uuid.uuid4()}.mp3" if not HAS_XTTS else f"voiceover_{uuid.uuid4()}.wav"
     filepath = os.path.join(output_dir, filename)
     
     try:
-        if speaker_wav and os.path.exists(speaker_wav):
-            # Voice cloning mode
-            print(f"Using voice cloning with reference: {speaker_wav}")
-            tts.tts_to_file(
-                text=script,
-                speaker_wav=speaker_wav,
-                language=language,
-                file_path=filepath
-            )
+        if HAS_XTTS:
+            # Use XTTS v2 for high-quality voice
+            tts = get_tts_model()
+            if speaker_wav and os.path.exists(speaker_wav):
+                print(f"Using voice cloning with reference: {speaker_wav}")
+                tts.tts_to_file(
+                    text=script,
+                    speaker_wav=speaker_wav,
+                    language=language,
+                    file_path=filepath
+                )
+            else:
+                print("Using default XTTS voice")
+                tts.tts_to_file(
+                    text=script,
+                    language=language,
+                    file_path=filepath
+                )
         else:
-            # Default voice mode
-            print("Using default XTTS voice")
-            tts.tts_to_file(
-                text=script,
-                language=language,
-                file_path=filepath
-            )
+            # Use gTTS as fallback
+            print("Using gTTS (Google Text-to-Speech)")
+            tts = gTTS_fallback(text=script, lang=language, slow=False)
+            tts.save(filepath)
         
         print(f"Voiceover saved to: {filepath}")
         return filepath
