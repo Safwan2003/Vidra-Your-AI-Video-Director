@@ -46,7 +46,7 @@ def generate_video_task(self, prompt: str, style: str, duration: int):
     self.update_state(state='PROGRESS', meta={'status': 'Generating images...', 'storyboard': storyboard})
     for i, scene in enumerate(storyboard["scenes"]):
         self.update_state(state='PROGRESS', meta={'status': f'Generating image for scene {i+1}/{len(storyboard["scenes"])}...', 'storyboard': storyboard})
-        scene["image_url"] = generate_image(scene["key_visual"], video_request.style)
+        scene["image_url"] = generate_image(scene["key_visual"], style)
         self.update_state(state='PROGRESS', meta={'status': f'Image for scene {i+1} generated.', 'storyboard': storyboard})
 
     self.update_state(state='PROGRESS', meta={'status': 'All images generated.', 'storyboard': storyboard})
@@ -63,7 +63,7 @@ def generate_video_task(self, prompt: str, style: str, duration: int):
     # 4. Audio Agent
     self.update_state(state='PROGRESS', meta={'status': 'Generating audio...', 'storyboard': storyboard})
     storyboard["voiceover_url"] = generate_voiceover(" ".join([scene["script"] for scene in storyboard["scenes"]]))
-    storyboard["music_url"] = generate_music(f"{video_request.style} background music")
+    storyboard["music_url"] = generate_music(f"{style} background music")
     self.update_state(state='PROGRESS', meta={'status': 'Audio generated.', 'storyboard': storyboard})
 
     # 5. Editor Agent
@@ -71,7 +71,7 @@ def generate_video_task(self, prompt: str, style: str, duration: int):
     final_video_url = create_final_video(storyboard)
     self.update_state(state='PROGRESS', meta={'status': 'Final video created.', 'storyboard': storyboard, 'final_video_url': final_video_url})
 
-    return {"status": "completed", "message": f"Video for '{video_request.prompt}' generated successfully!", "storyboard": storyboard, "final_video_url": final_video_url}
+    return {"status": "completed", "message": f"Video for '{prompt}' generated successfully!", "storyboard": storyboard, "final_video_url": final_video_url}
 
 @app.post("/generate_video")
 async def generate_video(video_request: VideoRequest):
