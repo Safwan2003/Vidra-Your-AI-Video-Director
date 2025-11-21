@@ -1,0 +1,14 @@
+streamlit
+dashscope
+groq
+moviepy
+edge-tts
+pillow
+requests
+nest_asyncio
+pyautogen
+python-dotenv
+pysrt
+replicate
+torch
+transformers
