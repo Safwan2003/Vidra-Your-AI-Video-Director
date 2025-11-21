@@ -44,9 +44,6 @@ with st.sidebar:
 
     st.header("4. Music Options")
     use_music = st.checkbox("Generate Background Music", True)
-    music_backend = st.selectbox("Music Generation Backend", ["auto", "musicgen", "synth"], index=0, help="'auto' uses GPU if available, otherwise falls back to faster synth.")
-    music_quality = st.selectbox("Music Generation Quality", ["balanced", "fast", "high"], index=0)
-    music_model = st.text_input("Music Generation Model", "facebook/musicgen-small")
 
     st.header("5. Brand Kit (Optional)")
     brand_logo_file = st.file_uploader("Upload Brand Logo (PNG)", type=["png"])
@@ -61,49 +58,48 @@ if generate_button:
     os.makedirs("user_assets", exist_ok=True)
     generated_paths = get_generated_paths()
     
-    # Setup API keys
-    with st.spinner("Setting up API keys and Dashscope..."):
+    with st.status("Configuring environment...", expanded=True) as status:
+        status.update(label="Setting up API keys and Dashscope...")
         setup_api_keys()
         setup_dashscope()
-    
-    # Save uploaded assets
-    asset_map = {}
-    if uploaded_files:
-        st.info(f"📁 Processing {len(uploaded_files)} uploaded file(s)...")
-        for i, file in enumerate(uploaded_files):
-            file_ext = os.path.splitext(file.name)[1]
-            asset_key = f"image_{i}" if file_ext.lower() in ['.png', '.jpg', '.jpeg'] else f"video_{i}"
-            asset_path = os.path.join("user_assets", f"{asset_key}{file_ext}")
-            with open(asset_path, "wb") as f:
-                f.write(file.getbuffer())
-            asset_map[asset_key] = asset_path
-            st.success(f"✅ Saved: {asset_key}")
-    
-    # Save brand assets
-    brand_logo_path = None
-    brand_font_path = None
-    if brand_logo_file:
-        brand_logo_path = os.path.join("brand_assets", "logo.png")
-        with open(brand_logo_path, "wb") as f:
-            f.write(brand_logo_file.getbuffer())
-        st.success("✅ Brand logo saved")
-    
-    if brand_font_file:
-        brand_font_path = os.path.join("brand_assets", f"custom_font{os.path.splitext(brand_font_file.name)[1]}")
-        with open(brand_font_path, "wb") as f:
-            f.write(brand_font_file.getbuffer())
-        st.success("✅ Custom font saved")
-    
+        
+        status.update(label="Processing uploaded assets...")
+        asset_map = {}
+        if uploaded_files:
+            st.info(f"📁 Processing {len(uploaded_files)} uploaded file(s)...")
+            for i, file in enumerate(uploaded_files):
+                file_ext = os.path.splitext(file.name)[1]
+                asset_key = f"image_{i}" if file_ext.lower() in ['.png', '.jpg', '.jpeg'] else f"video_{i}"
+                asset_path = os.path.join("user_assets", f"{asset_key}{file_ext}")
+                with open(asset_path, "wb") as f:
+                    f.write(file.getbuffer())
+                asset_map[asset_key] = asset_path
+                st.success(f"✅ Saved: {asset_key}")
+        
+        brand_logo_path = None
+        brand_font_path = None
+        if brand_logo_file:
+            brand_logo_path = os.path.join("brand_assets", "logo.png")
+            with open(brand_logo_path, "wb") as f:
+                f.write(brand_logo_file.getbuffer())
+            st.success("✅ Brand logo saved")
+        
+        if brand_font_file:
+            brand_font_path = os.path.join("brand_assets", f"custom_font{os.path.splitext(brand_font_file.name)[1]}")
+            with open(brand_font_path, "wb") as f:
+                f.write(brand_font_file.getbuffer())
+            st.success("✅ Custom font saved")
+        
+        status.update(label="Environment configured!", state="complete")
+
     # Step 1: AI Director Planning
-    st.header("🤖 Step 1: AI Director Planning")
-    with st.spinner("AI Director is planning the video storyboard..."):
+    with st.status("🤖 Step 1: AI Director planning storyboard...", expanded=True) as status:
         num_assets = len(uploaded_files) if uploaded_files else 0
         
-        # Show asset info
         if num_assets > 0:
-            st.info(f"📸 Using {num_assets} uploaded image(s) - will be reused consistently across scenes")
+            st.info(f"📸 Using {num_assets} uploaded image(s)...")
         else:
-            st.warning("⚠️ No images uploaded - AI will generate videos from text descriptions (less consistent)")
+            st.warning("⚠️ No images uploaded, AI will generate videos from text.")
         
         storyboard_plan = create_storyboard_with_autogen(
             goal=video_goal,
@@ -114,47 +110,79 @@ if generate_button:
         )
         
         if not storyboard_plan:
-            st.error("❌ Storyboard planning failed. Please check the logs.")
+            status.update(label="Storyboard planning failed.", state="error")
             st.stop()
-    
-    st.success("✅ Storyboard plan created!")
+        
+        status.update(label="✅ Storyboard plan created!", state="complete")
+
     with st.expander("📋 View Storyboard Plan", expanded=True):
         st.json(storyboard_plan)
     
     # Step 2: Generate Videos for Each Scene
     st.header("🎥 Step 2: Generating Video Scenes")
     video_urls = []
+    previous_video_path = None # Track previous video for continuity
+
     for i, scene in enumerate(storyboard_plan['scenes']):
         scene_num = i + 1
-        with st.spinner(f"Generating Scene {scene_num}/{len(storyboard_plan['scenes'])}..."):
-            video_url = generate_video_scene(scene, asset_map, aspect_ratio)
+        with st.status(f"Generating Scene {scene_num}/{len(storyboard_plan['scenes'])}...", expanded=True) as status:
+            
+            # Check for continuity request
+            last_frame_path = None
+            if scene.get('start_from_previous_end') and previous_video_path:
+                status.update(label=f"🔄 Extracting last frame from Scene {scene_num-1} for continuity...")
+                from core.utils import extract_last_frame
+                last_frame_path = os.path.join("generated_content", "video_temp", f"scene_{scene_num-1}_last_frame.png")
+                extracted = extract_last_frame(previous_video_path, last_frame_path)
+                if extracted:
+                    last_frame_path = extracted
+                    status.update(label=f"✅ Continuity frame extracted.")
+                else:
+                    status.update(label=f"⚠️ Failed to extract frame. Proceeding without continuity.")
+                    last_frame_path = None
+
+            video_url = generate_video_scene(scene, asset_map, aspect_ratio, status, last_frame_path=last_frame_path)
+            
             if video_url:
                 video_urls.append(video_url)
-                st.success(f"✅ Scene {scene_num} generated")
+                
+                # If it's a local file (passthrough), use it directly. If URL, we might need to download it first for frame extraction?
+                # The generate_video_scene returns a URL for AI video. 
+                # We need to download it to extract the frame for the NEXT scene.
+                # But wait, generate_video_scene returns a URL. We can't extract frame from URL easily without downloading.
+                # However, app.py doesn't download the video until Step 4 (Assembly).
+                # We need to download it NOW if we want to use it for the next scene.
+                
+                # Let's download it temporarily if it's a URL and we might need it for next scene
+                is_url = video_url.startswith("http")
+                if is_url:
+                    import requests
+                    temp_video_path = os.path.join("generated_content", "video_temp", f"scene_{scene_num}.mp4")
+                    with open(temp_video_path, 'wb') as f:
+                        f.write(requests.get(video_url).content)
+                    previous_video_path = temp_video_path
+                else:
+                    previous_video_path = video_url
+                
+                status.update(label=f"✅ Scene {scene_num} generated!", state="complete")
             else:
-                st.error(f"❌ Scene {scene_num} generation failed")
+                status.update(label=f"❌ Scene {scene_num} generation failed.", state="error")
                 st.stop()
     
     # Step 3: Generate Audio
     st.header("🎙️ Step 3: Generating Audio")
-    with st.spinner("Generating voiceover and background music..."):
-        audio_result = generate_storyboard_audio(
-            storyboard_plan,
-            use_music=use_music,
-            music_backend=music_backend,
-            music_quality=music_quality,
-            music_model=music_model
-        )
+    with st.status("Generating voiceover and music...", expanded=True) as status:
+        audio_result = generate_storyboard_audio(storyboard_plan, use_music, status=status)
         
-        if not audio_result or not audio_result['voiceover_path']:
-            st.error("❌ Audio generation failed")
+        if not audio_result or not audio_result.get('voiceover_path'):
+            status.update(label="Audio generation failed.", state="error")
             st.stop()
-    
-    st.success("✅ Audio generated!")
+        
+        status.update(label="✅ Audio generated!", state="complete")
     
     # Step 4: Assemble Final Video
     st.header("🎞️ Step 4: Assembling Final Video")
-    with st.spinner("Assembling all scenes into final video..."):
+    with st.status("Assembling final video...", expanded=True) as status:
         final_video_path = assemble_storyboard_video(
             storyboard_plan=storyboard_plan,
             video_urls=video_urls,
@@ -163,12 +191,15 @@ if generate_button:
             full_word_timings=audio_result['word_timings'],
             output_filename=f"{product_description.replace(' ', '_')}_storyboard.mp4",
             brand_logo_path=brand_logo_path,
-            brand_font_path=brand_font_path
+            brand_font_path=brand_font_path,
+            status=status
         )
         
         if not final_video_path:
-            st.error("❌ Video assembly failed")
+            status.update(label="Video assembly failed.", state="error")
             st.stop()
+        
+        status.update(label="✅ Final video assembled!", state="complete")
     
     # Success!
     st.balloons()

@@ -70,3 +70,33 @@ def get_generated_paths():
         "video_temp": video_temp_dir,
         "final_videos": final_videos_dir
     }
+
+def extract_last_frame(video_path, output_path):
+    """
+    Extracts the last frame of a video and saves it as an image.
+    
+    Args:
+        video_path (str): Path to the input video file.
+        output_path (str): Path to save the extracted image.
+        
+    Returns:
+        str: The path to the saved image, or None if failed.
+    """
+    from moviepy.editor import VideoFileClip
+    try:
+        print(f"🖼️ Extracting last frame from {video_path}...")
+        with VideoFileClip(video_path) as clip:
+            # Capture the very last frame
+            # We subtract a tiny amount to ensure we don't go out of bounds
+            last_frame_time = max(0, clip.duration - 0.1)
+            clip.save_frame(output_path, t=last_frame_time)
+        
+        if os.path.exists(output_path):
+            print(f"✅ Last frame saved to {output_path}")
+            return output_path
+        else:
+            print(f"❌ Failed to save last frame to {output_path}")
+            return None
+    except Exception as e:
+        print(f"❌ Error extracting last frame: {e}")
+        return None

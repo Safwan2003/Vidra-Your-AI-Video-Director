@@ -3,8 +3,10 @@
 import asyncio
 import os
 import nest_asyncio
-import replicate
-import requests
+import numpy as np
+import scipy.io.wavfile
+import torch
+from transformers import AutoProcessor, MusicgenForConditionalGeneration
 from moviepy.editor import AudioFileClip, concatenate_audioclips
 import edge_tts
 from core.utils import get_generated_paths
@@ -12,9 +14,11 @@ from core.utils import get_generated_paths
 
 nest_asyncio.apply()  # Fix for "event loop already running" in Jupyter
 
-async def generate_audio_async(text, voice_style="en-US-ChristopherNeural", output_file="voiceover.mp3"):
+async def generate_audio_async(text, voice_style="en-US-ChristopherNeural", output_file="voiceover.mp3", status=None):
     """Generates voiceover using edge-tts with dynamic voice selection and returns word timings."""
-    print(f"🎙️ Generating Voiceover with {voice_style}...")
+    message = f"🎙️ Generating voiceover with {voice_style}..."
+    if status: status.update(label=message)
+    print(message)
     
     communicate = edge_tts.Communicate(text, voice_style)
     word_timings = []
@@ -42,23 +46,26 @@ async def generate_audio_async(text, voice_style="en-US-ChristopherNeural", outp
     
     return output_file, word_timings
 
-def generate_audio(text, voice_style="en-US-ChristopherNeural", output_file="voiceover.mp3"):
+def generate_audio(text, voice_style="en-US-ChristopherNeural", output_file="voiceover.mp3", status=None):
     """
     Synchronous wrapper for audio generation.
-    Now supports dynamic voice selection from Director Agent and returns word timings.
     """
-    return asyncio.run(generate_audio_async(text, voice_style, output_file))
+    return asyncio.run(generate_audio_async(text, voice_style, output_file, status))
 
-def fetch_sfx(query, output_dir):
+def fetch_sfx(query, output_dir, status=None):
     """
     Fetches a sound effect from Freesound.org.
     """
     api_key = os.environ.get("FREESOUND_API_KEY")
     if not api_key:
-        print(f"⚠️ FREESOUND_API_KEY not set. Skipping SFX for '{query}'.")
+        message = f"⚠️ FREESOUND_API_KEY not set. Skipping SFX for '{query}'."
+        if status: status.update(label=message)
+        print(message)
         return None
 
-    print(f"🔊 Searching for SFX: '{query}'")
+    message = f"🔊 Searching for SFX: '{query}'"
+    if status: status.update(label=message)
+    print(message)
     url = "https://freesound.org/apiv2/search/text/"
     params = {
         "query": query,
@@ -87,7 +94,9 @@ def fetch_sfx(query, output_dir):
             print(f"   - Using cached SFX: {output_filename}")
             return output_path
 
-        print(f"   - Downloading '{sfx_name}'...")
+        message = f"   - Downloading '{sfx_name}'..."
+        if status: status.update(label=message)
+        print(message)
         sfx_response = requests.get(sfx_url, stream=True)
         sfx_response.raise_for_status()
         with open(output_path, 'wb') as f:
@@ -98,44 +107,107 @@ def fetch_sfx(query, output_dir):
         return output_path
 
     except Exception as e:
-        print(f"❌ SFX fetch failed for '{query}': {e}")
+        message = f"❌ SFX fetch failed for '{query}': {e}"
+        if status: status.update(label=message, state="error")
+        print(message)
         return None
 
 
-def generate_music_with_replicate(prompt, duration, output_dir=".", output_filename="background_music.wav"):
+def generate_synthetic_music(prompt="electronic beat", duration=5, output_dir=".", output_filename="background_music.wav"):
     """
-    Generates background music using a model on Replicate.
+    Procedurally generates a simple electronic loop (kick + hat + bass) using numpy.
+    """
+    print(f"🎵 Generating synthetic music for {duration}s...")
+    sample_rate = 22050
+    t = np.linspace(0, duration, int(sample_rate * duration), False)
+    
+    # Simple kick drum pattern (every beat)
+    kick_freq = 60
+    kick = np.sin(2 * np.pi * kick_freq * t) * np.exp(-5 * (t % 1))
+    
+    # Hi-hat (every half beat)
+    hat = np.random.normal(0, 0.1, len(t)) * (np.sin(8 * np.pi * t) > 0.5)
+    
+    # Bass line
+    bass_freq = 110
+    bass = 0.3 * np.sin(2 * np.pi * bass_freq * t)
+    
+    # Mix
+    audio = kick + hat + bass
+    audio = np.clip(audio / np.max(np.abs(audio)) * 0.5, -1, 1)
+    audio_stereo = np.column_stack([audio, audio])
+    
+    output_path = os.path.join(output_dir, output_filename)
+    scipy.io.wavfile.write(output_path, sample_rate, (audio_stereo * 32767).astype(np.int16))
+    print(f"✅ Fast synthetic music saved to {output_path}")
+    return output_path
+
+
+def generate_background_music(prompt="upbeat electronic", duration=10, output_dir=".", 
+                             output_filename="background_music.wav", 
+                             backend="auto", quality="fast", model="facebook/musicgen-small"):
+    """
+    Generates background music using MusicGen (GPU/CPU) or synthetic fallback.
+    
+    Args:
+        backend: "auto", "musicgen", or "synthetic"
+        quality: "fast", "balanced", "high" (only for musicgen)
+        model: MusicGen model to use
     """
     output_path = os.path.join(output_dir, output_filename)
+    
+    # Auto-detect backend
+    if backend == "auto":
+        backend = "musicgen" if torch.cuda.is_available() else "synthetic"
+        if backend == "synthetic":
+            print("⚡ No GPU detected. Using fast synthetic music fallback (set backend='musicgen' for CPU high-quality).")
+    
+    # Synthetic fallback
+    if backend == "synthetic":
+        return generate_synthetic_music(prompt, duration, output_dir, output_filename)
+    
+    # MusicGen (GPU or CPU)
+    print(f"🎵 Generating music with MusicGen ({model}, quality={quality})...")
     try:
-        if not os.environ.get("REPLICATE_API_TOKEN"):
-            print("⚠️ REPLICATE_API_TOKEN not set. Skipping music generation.")
-            return None
-
-        print(f"🎵 Generating background music via Replicate API: '{prompt}'...")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        processor = AutoProcessor.from_pretrained(model)
+        model_obj = MusicgenForConditionalGeneration.from_pretrained(model).to(device)
         
-        output = replicate.run(
-            "riffusion/riffusion:8cf61ea6c56afd61d8f5b9ffd14d7c216c0a93844ce2d82ac1c9ecc9c7f24e05",
-            input={"prompt_a": prompt}
-        )
+        # Quality settings
+        if quality == "fast":
+            max_new_tokens = 256
+        elif quality == "balanced":
+            max_new_tokens = 512
+        else:  # high
+            max_new_tokens = 1024
         
-        music_url = output['audio']
-        print(f"   ⏳ Downloading generated music from: {music_url}")
-
-        response = requests.get(music_url, stream=True)
-        response.raise_for_status()
-        with open(output_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+        inputs = processor(text=[prompt], padding=True, return_tensors="pt").to(device)
         
-        print(f"✅ Music saved to {output_path}")
+        print(f"   Generating on {device.upper()} (tokens={max_new_tokens})...")
+        audio_values = model_obj.generate(**inputs, max_new_tokens=max_new_tokens)
+        
+        audio_np = audio_values[0, 0].cpu().numpy()
+        sample_rate = model_obj.config.audio_encoder.sampling_rate
+        
+        # Extend or trim to match duration
+        expected_samples = int(sample_rate * duration)
+        if len(audio_np) < expected_samples:
+            audio_np = np.tile(audio_np, int(np.ceil(expected_samples / len(audio_np))))[:expected_samples]
+        else:
+            audio_np = audio_np[:expected_samples]
+        
+        audio_stereo = np.column_stack([audio_np, audio_np])
+        scipy.io.wavfile.write(output_path, sample_rate, (audio_stereo * 32767).astype(np.int16))
+        
+        print(f"✅ MusicGen music saved to {output_path}")
         return output_path
-
+        
     except Exception as e:
-        print(f"❌ Replicate music generation failed: {e}")
-        return None
+        print(f"❌ MusicGen failed: {e}. Falling back to synthetic...")
+        return generate_synthetic_music(prompt, duration, output_dir, output_filename)
 
-def generate_storyboard_audio(storyboard_plan, use_music=True, **kwargs):
+
+def generate_storyboard_audio(storyboard_plan, use_music=True, status=None, **kwargs):
     """
     Generates audio for a full storyboard using cloud APIs.
     """
@@ -145,19 +217,20 @@ def generate_storyboard_audio(storyboard_plan, use_music=True, **kwargs):
     total_duration = 0
     current_offset = 0
 
-    # Generate voiceover and SFX for each scene
-    sfx_cache = {} # Cache to avoid re-downloading the same SFX
+    sfx_cache = {} 
+    num_scenes = len(storyboard_plan['scenes'])
     for i, scene in enumerate(storyboard_plan['scenes']):
+        if status: status.update(label=f"Generating voiceover for scene {i+1}/{num_scenes}...")
         scene_audio_path = os.path.join(paths["audio"], f"voiceover_scene_{i+1}.mp3")
         
         audio_path, word_timings = generate_audio(
             text=scene['script'],
             voice_style=storyboard_plan['voice_style'],
-            output_file=scene_audio_path
+            output_file=scene_audio_path,
+            status=status
         )
         clip = AudioFileClip(audio_path)
         
-        # Correlate kinetic typography data with word timings to fetch SFX
         kt_data = scene.get('kinetic_typography', [])
         for idx, timing_info in enumerate(word_timings):
             if idx < len(kt_data):
@@ -166,11 +239,11 @@ def generate_storyboard_audio(storyboard_plan, use_music=True, **kwargs):
                     if sfx_prompt in sfx_cache:
                         timing_info['sfx_path'] = sfx_cache[sfx_prompt]
                     else:
-                        sfx_path = fetch_sfx(sfx_prompt, paths["audio"])
+                        if status: status.update(label=f"Fetching SFX: '{sfx_prompt}'...")
+                        sfx_path = fetch_sfx(sfx_prompt, paths["audio"], status)
                         timing_info['sfx_path'] = sfx_path
                         sfx_cache[sfx_prompt] = sfx_path
 
-        # Adjust word timings for the overall video timeline
         for wt in word_timings:
             wt['start'] += current_offset
             wt['end'] += current_offset
@@ -180,24 +253,24 @@ def generate_storyboard_audio(storyboard_plan, use_music=True, **kwargs):
         total_duration += clip.duration
         current_offset = total_duration
 
-    # Concatenate voiceovers
     if not scene_audio_clips:
         return {"voiceover_path": None, "music_path": None, "word_timings": []}
     
+    if status: status.update(label="Concatenating voiceovers...")
     full_voiceover_clip = concatenate_audioclips(scene_audio_clips)
     full_voiceover_path = os.path.join(paths["audio"], "full_voiceover.mp3")
-    full_voiceover_clip.write_audiofile(full_voiceover_path)
+    full_voiceover_clip.write_audiofile(full_voiceover_path, logger=None)
+    if status: status.update(label="Voiceover track finalized.")
 
-    # Generate background music
     music_path = None
     if use_music:
-        music_path = generate_music_with_replicate(
+        music_path = generate_background_music(
             prompt=storyboard_plan['music_prompt'],
             duration=full_voiceover_clip.duration,
-            output_dir=paths["audio"]
+            output_dir=paths["audio"],
+            **kwargs
         )
 
-    # Clean up individual scene clips
     for clip in scene_audio_clips:
         clip.close()
     
