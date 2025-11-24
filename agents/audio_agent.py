@@ -113,34 +113,32 @@ def fetch_sfx(query, output_dir, status=None):
         return None
 
 
-def generate_synthetic_music(prompt="electronic beat", duration=5, output_dir=".", output_filename="background_music.wav"):
+def download_stock_music(prompt="upbeat", duration=10, output_dir=".", output_filename="background_music.mp3"):
     """
-    Procedurally generates a simple electronic loop (kick + hat + bass) using numpy.
+    Downloads a high-quality royalty-free stock track as a fallback.
     """
-    print(f"🎵 Generating synthetic music for {duration}s...")
-    sample_rate = 22050
-    t = np.linspace(0, duration, int(sample_rate * duration), False)
+    print(f"🎵 Downloading stock music for '{prompt}'...")
     
-    # Simple kick drum pattern (every beat)
-    kick_freq = 60
-    kick = np.sin(2 * np.pi * kick_freq * t) * np.exp(-5 * (t % 1))
-    
-    # Hi-hat (every half beat)
-    hat = np.random.normal(0, 0.1, len(t)) * (np.sin(8 * np.pi * t) > 0.5)
-    
-    # Bass line
-    bass_freq = 110
-    bass = 0.3 * np.sin(2 * np.pi * bass_freq * t)
-    
-    # Mix
-    audio = kick + hat + bass
-    audio = np.clip(audio / np.max(np.abs(audio)) * 0.5, -1, 1)
-    audio_stereo = np.column_stack([audio, audio])
+    # URL for a royalty-free upbeat corporate track (Example from Pixabay/FMA or similar)
+    # Using a reliable test URL for "Upbeat" music. 
+    # In production, this should be a library of URLs or an API.
+    # For now, we use a known "Corporate Upbeat" sample.
+    stock_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" 
     
     output_path = os.path.join(output_dir, output_filename)
-    scipy.io.wavfile.write(output_path, sample_rate, (audio_stereo * 32767).astype(np.int16))
-    print(f"✅ Fast synthetic music saved to {output_path}")
-    return output_path
+    
+    try:
+        import requests
+        response = requests.get(stock_url, stream=True)
+        response.raise_for_status()
+        with open(output_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print(f"✅ Stock music saved to {output_path}")
+        return output_path
+    except Exception as e:
+        print(f"❌ Stock music download failed: {e}")
+        return None
 
 
 def generate_background_music(prompt="upbeat electronic", duration=10, output_dir=".", 
@@ -158,13 +156,13 @@ def generate_background_music(prompt="upbeat electronic", duration=10, output_di
     
     # Auto-detect backend
     if backend == "auto":
-        backend = "musicgen" if torch.cuda.is_available() else "synthetic"
-        if backend == "synthetic":
-            print("⚡ No GPU detected. Using fast synthetic music fallback (set backend='musicgen' for CPU high-quality).")
+        backend = "musicgen" if torch.cuda.is_available() else "stock"
+        if backend == "stock":
+            print("⚡ No GPU detected. Using High-Quality Stock Music fallback.")
     
-    # Synthetic fallback
-    if backend == "synthetic":
-        return generate_synthetic_music(prompt, duration, output_dir, output_filename)
+    # Stock Fallback
+    if backend == "stock":
+        return download_stock_music(prompt, duration, output_dir, output_filename)
     
     # MusicGen (GPU or CPU)
     print(f"🎵 Generating music with MusicGen ({model}, quality={quality})...")
@@ -203,8 +201,8 @@ def generate_background_music(prompt="upbeat electronic", duration=10, output_di
         return output_path
         
     except Exception as e:
-        print(f"❌ MusicGen failed: {e}. Falling back to synthetic...")
-        return generate_synthetic_music(prompt, duration, output_dir, output_filename)
+        print(f"❌ MusicGen failed: {e}. Falling back to Stock Music...")
+        return download_stock_music(prompt, duration, output_dir, output_filename)
 
 
 def generate_storyboard_audio(storyboard_plan, use_music=True, status=None, **kwargs):

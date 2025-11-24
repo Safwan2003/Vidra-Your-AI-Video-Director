@@ -2,217 +2,211 @@
 
 import streamlit as st
 from core.utils import setup_api_keys, setup_dashscope, get_generated_paths
-from agents.storyboard_manager import create_storyboard_with_autogen
-from agents.video_agent import generate_video_scene
+from agents.storyboard_manager import create_storyboard_with_autogen, STYLE_PRESETS
+from agents.video_agent import generate_scenes_parallel
 from agents.audio_agent import generate_storyboard_audio
 from core.editor import assemble_storyboard_video
 import os
+import json
 
 # --- Page Config ---
 st.set_page_config(
-    page_title="VIDRA: AI Video Strategist",
+    page_title="VIDRA: AI Video Director",
     page_icon="🎬",
     layout="wide"
 )
 
+# --- Session State Management ---
+if "storyboard" not in st.session_state:
+    st.session_state.storyboard = None
+if "asset_map" not in st.session_state:
+    st.session_state.asset_map = {}
+if "generated_video_paths" not in st.session_state:
+    st.session_state.generated_video_paths = []
+
 # --- Main App ---
-st.title("🎬 VIDRA: AI-Powered Video Generator")
-st.markdown("Define your goal and audience, and let the AI strategist plan and create your video.")
+st.title("🎬 VIDRA: AI-Powered Video Director")
+st.markdown("Define your goal, choose a style, and let the AI direct your masterpiece.")
 
 # --- Sidebar for Inputs ---
 with st.sidebar:
-    st.header("1. Narrative & Goal")
+    st.header("1. Strategy & Style")
     video_goal = st.selectbox(
         "Select Video Goal", 
-        ["Product/Feature Launch", "Explainer Video", "Benefits Showcase"], 
-        index=0 # Product/Feature Launch
+        ["Product/Feature Launch", "Explainer Video", "Benefits Showcase", "Social Media Hype"], 
+        index=0
     )
-    target_audience = st.text_input("Target Audience", "Young adults aged 18-35, active lifestyle, social media users")
-    product_description = st.text_input("Product Description", "Refreshing energy drink can with a vibrant, modern design")
-    brand_tone = st.text_input("Brand Tone", "Bold, energetic, and exhilarating")
+    
+    # NEW: Style Selector
+    style_names = list(STYLE_PRESETS.keys())
+    selected_style = st.selectbox("Visual Style", style_names, index=0)
+    st.caption(f"✨ *{STYLE_PRESETS[selected_style]}*")
+
+    target_audience = st.text_input("Target Audience", "Young adults, tech-savvy, active lifestyle")
+    product_description = st.text_input("Product Description", "Futuristic energy drink with glowing neon can")
+    brand_tone = st.text_input("Brand Tone", "Bold, energetic, cinematic")
 
     st.header("2. Visual Assets")
     uploaded_files = st.file_uploader(
-        "Upload Images or Video Clips (e.g., for Problem, Solution, CTA)", 
+        "Upload Images or Video Clips", 
         type=["png", "jpg", "jpeg", "mp4"],
         accept_multiple_files=True
     )
+    
+    # Process assets immediately to populate session state
+    if uploaded_files:
+        os.makedirs("user_assets", exist_ok=True)
+        for i, file in enumerate(uploaded_files):
+            file_ext = os.path.splitext(file.name)[1]
+            asset_key = f"image_{i}" if file_ext.lower() in ['.png', '.jpg', '.jpeg'] else f"video_{i}"
+            asset_path = os.path.join("user_assets", f"{asset_key}{file_ext}")
+            with open(asset_path, "wb") as f:
+                f.write(file.getbuffer())
+            st.session_state.asset_map[asset_key] = asset_path
+        st.success(f"✅ Loaded {len(uploaded_files)} assets")
 
-    st.header("3. Video Options")
+    st.header("3. Configuration")
     aspect_ratio = st.selectbox("Aspect Ratio", ["16:9", "9:16", "1:1"], index=0)
-    num_scenes = st.slider("Number of Scenes", min_value=2, max_value=5, value=3, help="How many scenes in your video?")
-
-    st.header("4. Music Options")
+    num_scenes = st.slider("Number of Scenes", min_value=2, max_value=5, value=3)
     use_music = st.checkbox("Generate Background Music", True)
 
-    st.header("5. Brand Kit (Optional)")
+    st.header("4. Brand Kit")
     brand_logo_file = st.file_uploader("Upload Brand Logo (PNG)", type=["png"])
     brand_font_file = st.file_uploader("Upload Custom Font (TTF/OTF)", type=["ttf", "otf"])
 
-    generate_button = st.button("Generate Full Video", use_container_width=True)
+    # Save brand assets
+    if brand_logo_file:
+        os.makedirs("brand_assets", exist_ok=True)
+        with open(os.path.join("brand_assets", "logo.png"), "wb") as f: f.write(brand_logo_file.getbuffer())
+    if brand_font_file:
+        os.makedirs("brand_assets", exist_ok=True)
+        with open(os.path.join("brand_assets", f"custom_font{os.path.splitext(brand_font_file.name)[1]}"), "wb") as f: f.write(brand_font_file.getbuffer())
 
-# --- Main Content Area ---
-if generate_button:
-    # --- Ensure all necessary directories exist ---
-    os.makedirs("brand_assets", exist_ok=True)
-    os.makedirs("user_assets", exist_ok=True)
-    generated_paths = get_generated_paths()
-    
-    with st.status("Configuring environment...", expanded=True) as status:
-        status.update(label="Setting up API keys and Dashscope...")
-        setup_api_keys()
-        setup_dashscope()
-        
-        status.update(label="Processing uploaded assets...")
-        asset_map = {}
-        if uploaded_files:
-            st.info(f"📁 Processing {len(uploaded_files)} uploaded file(s)...")
-            for i, file in enumerate(uploaded_files):
-                file_ext = os.path.splitext(file.name)[1]
-                asset_key = f"image_{i}" if file_ext.lower() in ['.png', '.jpg', '.jpeg'] else f"video_{i}"
-                asset_path = os.path.join("user_assets", f"{asset_key}{file_ext}")
-                with open(asset_path, "wb") as f:
-                    f.write(file.getbuffer())
-                asset_map[asset_key] = asset_path
-                st.success(f"✅ Saved: {asset_key}")
-        
-        brand_logo_path = None
-        brand_font_path = None
-        if brand_logo_file:
-            brand_logo_path = os.path.join("brand_assets", "logo.png")
-            with open(brand_logo_path, "wb") as f:
-                f.write(brand_logo_file.getbuffer())
-            st.success("✅ Brand logo saved")
-        
-        if brand_font_file:
-            brand_font_path = os.path.join("brand_assets", f"custom_font{os.path.splitext(brand_font_file.name)[1]}")
-            with open(brand_font_path, "wb") as f:
-                f.write(brand_font_file.getbuffer())
-            st.success("✅ Custom font saved")
-        
-        status.update(label="Environment configured!", state="complete")
+# --- Workflow Step 1: Plan Storyboard ---
+st.divider()
+col1, col2 = st.columns([1, 3])
 
-    # Step 1: AI Director Planning
-    with st.status("🤖 Step 1: AI Director planning storyboard...", expanded=True) as status:
-        num_assets = len(uploaded_files) if uploaded_files else 0
-        
-        if num_assets > 0:
-            st.info(f"📸 Using {num_assets} uploaded image(s)...")
-        else:
-            st.warning("⚠️ No images uploaded, AI will generate videos from text.")
-        
-        storyboard_plan = create_storyboard_with_autogen(
-            goal=video_goal,
-            target_audience=target_audience,
-            product_desc=product_description,
-            num_assets=num_assets,
-            asset_map=asset_map
-        )
-        
-        if not storyboard_plan:
-            status.update(label="Storyboard planning failed.", state="error")
-            st.stop()
-        
-        status.update(label="✅ Storyboard plan created!", state="complete")
-
-    with st.expander("📋 View Storyboard Plan", expanded=True):
-        st.json(storyboard_plan)
-    
-    # Step 2: Generate Videos for Each Scene
-    st.header("🎥 Step 2: Generating Video Scenes")
-    video_urls = []
-    previous_video_path = None # Track previous video for continuity
-
-    for i, scene in enumerate(storyboard_plan['scenes']):
-        scene_num = i + 1
-        with st.status(f"Generating Scene {scene_num}/{len(storyboard_plan['scenes'])}...", expanded=True) as status:
+with col1:
+    st.subheader("Step 1: Planning")
+    if st.button("📝 Create Storyboard", use_container_width=True):
+        with st.status("🤖 AI Director is planning your video...", expanded=True) as status:
+            setup_api_keys()
+            setup_dashscope()
             
-            # Check for continuity request
-            last_frame_path = None
-            if scene.get('start_from_previous_end') and previous_video_path:
-                status.update(label=f"🔄 Extracting last frame from Scene {scene_num-1} for continuity...")
-                from core.utils import extract_last_frame
-                last_frame_path = os.path.join("generated_content", "video_temp", f"scene_{scene_num-1}_last_frame.png")
-                extracted = extract_last_frame(previous_video_path, last_frame_path)
-                if extracted:
-                    last_frame_path = extracted
-                    status.update(label=f"✅ Continuity frame extracted.")
-                else:
-                    status.update(label=f"⚠️ Failed to extract frame. Proceeding without continuity.")
-                    last_frame_path = None
-
-            video_url = generate_video_scene(scene, asset_map, aspect_ratio, status, last_frame_path=last_frame_path)
+            num_assets = len(st.session_state.asset_map)
             
-            if video_url:
-                video_urls.append(video_url)
-                
-                # If it's a local file (passthrough), use it directly. If URL, we might need to download it first for frame extraction?
-                # The generate_video_scene returns a URL for AI video. 
-                # We need to download it to extract the frame for the NEXT scene.
-                # But wait, generate_video_scene returns a URL. We can't extract frame from URL easily without downloading.
-                # However, app.py doesn't download the video until Step 4 (Assembly).
-                # We need to download it NOW if we want to use it for the next scene.
-                
-                # Let's download it temporarily if it's a URL and we might need it for next scene
-                is_url = video_url.startswith("http")
-                if is_url:
-                    import requests
-                    temp_video_path = os.path.join("generated_content", "video_temp", f"scene_{scene_num}.mp4")
-                    with open(temp_video_path, 'wb') as f:
-                        f.write(requests.get(video_url).content)
-                    previous_video_path = temp_video_path
-                else:
-                    previous_video_path = video_url
-                
-                status.update(label=f"✅ Scene {scene_num} generated!", state="complete")
+            plan = create_storyboard_with_autogen(
+                goal=video_goal,
+                target_audience=target_audience,
+                product_desc=product_description,
+                num_scenes=num_scenes,
+                num_assets=num_assets,
+                asset_map=st.session_state.asset_map,
+                brand_tone=brand_tone,
+                style_preset=selected_style
+            )
+            
+            if plan:
+                st.session_state.storyboard = plan
+                status.update(label="✅ Storyboard created!", state="complete")
             else:
-                status.update(label=f"❌ Scene {scene_num} generation failed.", state="error")
-                st.stop()
-    
-    # Step 3: Generate Audio
-    st.header("🎙️ Step 3: Generating Audio")
-    with st.status("Generating voiceover and music...", expanded=True) as status:
-        audio_result = generate_storyboard_audio(storyboard_plan, use_music, status=status)
+                status.update(label="❌ Planning failed.", state="error")
+
+# --- Workflow Step 2: Edit & Generate ---
+if st.session_state.storyboard:
+    with col2:
+        st.subheader("Step 2: Review & Edit")
         
-        if not audio_result or not audio_result.get('voiceover_path'):
-            status.update(label="Audio generation failed.", state="error")
-            st.stop()
-        
-        status.update(label="✅ Audio generated!", state="complete")
-    
-    # Step 4: Assemble Final Video
-    st.header("🎞️ Step 4: Assembling Final Video")
-    with st.status("Assembling final video...", expanded=True) as status:
-        final_video_path = assemble_storyboard_video(
-            storyboard_plan=storyboard_plan,
-            video_urls=video_urls,
-            voiceover_path=audio_result['voiceover_path'],
-            music_path=audio_result.get('music_path'),
-            full_word_timings=audio_result['word_timings'],
-            output_filename=f"{product_description.replace(' ', '_')}_storyboard.mp4",
-            brand_logo_path=brand_logo_path,
-            brand_font_path=brand_font_path,
-            status=status
-        )
-        
-        if not final_video_path:
-            status.update(label="Video assembly failed.", state="error")
-            st.stop()
-        
-        status.update(label="✅ Final video assembled!", state="complete")
-    
-    # Success!
-    st.balloons()
-    st.success("🎉 Video Generation Complete!")
-    
-    # Display the final video
-    st.video(final_video_path)
-    
-    # Download button
-    with open(final_video_path, "rb") as f:
-        st.download_button(
-            label="📥 Download Video",
-            data=f,
-            file_name=os.path.basename(final_video_path),
-            mime="video/mp4"
-        )
+        # --- Storyboard Editor ---
+        with st.expander("✏️ Edit Storyboard (Click to Expand)", expanded=True):
+            sb = st.session_state.storyboard
+            
+            # Global Settings
+            sb['music_prompt'] = st.text_input("Music Prompt", sb.get('music_prompt', ''))
+            
+            # Scene Editor
+            updated_scenes = []
+            for i, scene in enumerate(sb['scenes']):
+                st.markdown(f"**Scene {i+1}**")
+                c1, c2 = st.columns([1, 2])
+                with c1:
+                    scene['script'] = st.text_area(f"Script (Scene {i+1})", scene.get('script', ''), height=100)
+                with c2:
+                    scene['visual_prompt'] = st.text_area(f"Visual Prompt (Scene {i+1})", scene.get('visual_prompt', ''), height=100)
+                
+                # Advanced options
+                with st.popover(f"⚙️ Advanced (Scene {i+1})"):
+                    scene['duration_s'] = st.slider(f"Duration (s)", 3, 5, scene.get('duration_s', 4), key=f"dur_{i}")
+                    scene['visual_type'] = st.selectbox(f"Type", ["i2v", "t2v", "passthrough"], index=["i2v", "t2v", "passthrough"].index(scene.get('visual_type', 't2v')), key=f"type_{i}")
+                
+                st.divider()
+                updated_scenes.append(scene)
+            
+            sb['scenes'] = updated_scenes
+            st.session_state.storyboard = sb
+
+        # --- Generation Button ---
+        if st.button("🚀 Generate Video (Parallel)", type="primary", use_container_width=True):
+            
+            # 1. Video Generation
+            with st.status("🎥 Generating Scenes & Audio...", expanded=True) as status:
+                setup_api_keys()
+                setup_dashscope()
+                paths = get_generated_paths() # Ensure directories exist
+                
+                # Parallel Video
+                video_results = generate_scenes_parallel(
+                    storyboard_plan=st.session_state.storyboard,
+                    asset_map=st.session_state.asset_map,
+                    aspect_ratio=aspect_ratio,
+                    status_container=status
+                )
+                
+                # Download/Process Videos
+                video_paths = []
+                for i, res in enumerate(video_results):
+                    if res and res.startswith("http"):
+                        # Download logic
+                        import requests
+                        path = os.path.join(paths["video_temp"], f"scene_{i+1}.mp4")
+                        with open(path, 'wb') as f: f.write(requests.get(res).content)
+                        video_paths.append(path)
+                    elif res:
+                        video_paths.append(res)
+                    else:
+                        status.write(f"❌ Scene {i+1} failed.")
+                        st.stop()
+                
+                # 2. Audio Generation
+                status.write("🎙️ Generating Audio...")
+                audio_res = generate_storyboard_audio(st.session_state.storyboard, use_music, status=status)
+                
+                # 3. Assembly
+                status.write("🎞️ Assembling Final Video...")
+                brand_logo = os.path.join("brand_assets", "logo.png") if brand_logo_file else None
+                brand_font = None # Logic for font path if needed
+                
+                final_path = assemble_storyboard_video(
+                    storyboard_plan=st.session_state.storyboard,
+                    video_urls=video_paths,
+                    voiceover_path=audio_res['voiceover_path'],
+                    music_path=audio_res.get('music_path'),
+                    full_word_timings=audio_res['word_timings'],
+                    brand_logo_path=brand_logo,
+                    status=status
+                )
+                
+                if final_path:
+                    status.update(label="✅ Video Complete!", state="complete")
+                    st.balloons()
+                    
+                    # Display
+                    st.video(final_path)
+                    with open(final_path, "rb") as f:
+                        st.download_button("📥 Download Video", f, file_name="vidra_masterpiece.mp4")
+                else:
+                    status.update(label="❌ Assembly failed.", state="error")
+
+else:
+    with col2:
+        st.info("👈 Start by creating a storyboard in Step 1.")

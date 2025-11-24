@@ -48,7 +48,7 @@ def parse_overlay_style(style_str):
         'padding': padding
     }
 
-def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, overlay_style_str, video_width, video_height, font_path=None, scene_start_offset=0):
+def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, overlay_style_str, video_width, video_height, font_path=None, scene_start_offset=0, style_preset="Cinematic"):
     """
     Generates a list of animated TextClips for AI-driven kinetic typography with proper animations.
     """
@@ -56,24 +56,53 @@ def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, o
     style = parse_overlay_style(overlay_style_str)
 
     # Larger font for impact
-    font_size = 90
+    font_size = 100
     font = "Arial-Bold"
     if font_path and os.path.exists(font_path):
         font = font_path
 
+    # --- STYLE-AWARE TYPOGRAPHY ---
+    # Override defaults based on style_preset
+    text_color_override = None
+    stroke_color_override = 'black'
+    
+    if style_preset == "Cyberpunk":
+        font = "Impact" # Bold, industrial
+        text_color_override = "#39ff14" # Neon Green
+        stroke_color_override = "#ff00ff" # Neon Pink stroke
+    elif style_preset == "Luxury":
+        font = "Times-New-Roman-Bold" # Serif
+        text_color_override = "#ffd700" # Gold
+        stroke_color_override = "black"
+    elif style_preset == "High Energy":
+        font = "Arial-Black"
+        text_color_override = "yellow"
+        stroke_color_override = "red"
+    elif style_preset == "TV Commercial":
+        font = "Arial-Bold"
+        text_color_override = "#333333" # Dark Grey for clean look on white
+        stroke_color_override = "white" # White stroke for separation
+    # ------------------------------
+
     # Position based on style
-    base_y_pos = int(0.75 * video_height)
+    base_y_pos = int(0.5 * video_height) # Default to Center for better integration
     if style['position'] == 'top':
-        base_y_pos = int(0.15 * video_height)
-    elif style['position'] == 'center':
-        base_y_pos = int(0.5 * video_height)
+        base_y_pos = int(0.2 * video_height)
+    elif style['position'] == 'bottom':
+        base_y_pos = int(0.8 * video_height)
 
     print(f"🔤 Creating {len(kinetic_typography_data)} kinetic text animations...")
 
     for i, word_data in enumerate(kinetic_typography_data):
         word_text = word_data['word']
         anim_style = word_data.get('animation_style', 'fade')
-        color = word_data.get('color', 'white')
+        # Normalize style variants from storyboard (e.g., 'slide' -> 'slide_in')
+        if anim_style == 'slide':
+            anim_style = 'slide_in'
+        
+        # Apply style overrides
+        color = text_color_override if text_color_override else word_data.get('color', 'white')
+        stroke_col = stroke_color_override
 
         # Match word timing (fuzzy match by word text)
         timing = None
@@ -100,8 +129,8 @@ def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, o
                 fontsize=font_size,
                 color=color,
                 font=font,
-                stroke_color='black',
-                stroke_width=2,
+                stroke_color=stroke_col,
+                stroke_width=4, # Thicker stroke for better separation
                 method='label'
             ).set_start(word_start).set_duration(duration)
         except Exception as e:
@@ -141,6 +170,33 @@ def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, o
             word_clip = word_clip.set_position(slide_pos)
             word_clip = word_clip.crossfadein(anim_in).crossfadeout(anim_out)
             
+        elif anim_style == 'glitch':
+            # Random position jitter + opacity flicker
+            import random
+            def glitch_pos(t):
+                if t < duration:
+                    jitter_x = random.randint(-5, 5)
+                    jitter_y = random.randint(-5, 5)
+                    return (video_width / 2 + jitter_x - word_clip.w/2, base_y_pos + jitter_y)
+                return ('center', base_y_pos)
+            
+            word_clip = word_clip.set_position(glitch_pos)
+            # Flicker opacity
+            word_clip = word_clip.fl_image(lambda image, t: image if random.random() > 0.2 else image * 0)
+
+        elif anim_style == 'typewriter':
+            # Reveal text character by character (simulated by masking or just simple reveal)
+            # MoviePy TextClip doesn't support dynamic text content easily without re-rendering.
+            # Simpler approach: Masking from left to right.
+            def typewriter_mask(t):
+                if t < anim_in:
+                    return 1 # Full mask (visible) - wait, mask logic in moviepy is complex.
+                    # Let's stick to a simple opacity fade for now, or just use the 'pop' effect as fallback
+                    # until we implement a proper mask.
+                return 1
+            # Fallback to pop for now as typewriter requires CompositeVideoClip of individual letters
+            word_clip = word_clip.resize(lambda t: min(1, t/anim_in) if t < anim_in else 1)
+
         else:  # fade (default)
             word_clip = word_clip.set_position(('center', base_y_pos))
             word_clip = word_clip.crossfadein(anim_in).crossfadeout(anim_out)
@@ -243,7 +299,8 @@ def assemble_storyboard_video(storyboard_plan, video_urls, voiceover_path, music
                 print(f"🔤 Generating AI Kinetic Text for Scene {i+1}...")
                 kinetic_clips = create_kinetic_text_clips(
                     word_timings_for_scene, kinetic_data, storyboard_plan['overlay_style'],
-                    video_clip.w, video_clip.h, brand_font_path, scene_start_time
+                    video_clip.w, video_clip.h, brand_font_path, scene_start_time,
+                    style_preset=storyboard_plan.get('style_preset', 'Cinematic')
                 )
                 all_scene_elements.extend(kinetic_clips)
             
