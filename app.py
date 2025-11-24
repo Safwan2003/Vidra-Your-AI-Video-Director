@@ -45,9 +45,9 @@ with st.sidebar:
     style_desc = "The AI will choose the best style for your product." if selected_style == "✨ AI Auto-Select" else STYLE_PRESETS[selected_style]
     st.caption(f"✨ *{style_desc}*")
 
-    target_audience = st.text_input("Target Audience", "Fitness enthusiasts, bodybuilders, health-conscious")
-    product_description = st.text_input("Product Description", "Premium Whey Protein Powder, Chocolate flavor, sleek black tub with gold label")
-    brand_tone = st.text_input("Brand Tone", "Strong, motivating, premium")
+    target_audience = st.text_input("Target Audience", "Tech-savvy professionals, early adopters, fitness enthusiasts")
+    product_description = st.text_input("Product Description", "Futuristic AI-powered smartwatch with holographic display, sleek titanium frame, health monitoring")
+    brand_tone = st.text_input("Brand Tone", "Innovative, cutting-edge, premium")
 
     st.header("2. Visual Assets")
     uploaded_files = st.file_uploader(

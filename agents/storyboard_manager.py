@@ -83,14 +83,46 @@ def create_storyboard_with_autogen(goal, target_audience, product_desc, num_scen
     else:
         asset_context += "No assets uploaded. Use 't2v' for all scenes."
 
-    # --- STEP 0: The Innovator (Agentic Creativity) ---
+    # --- STEP 0: The Innovator (Agentic Creativity + Smart Selection) ---
     print("🧠 Step 0: Innovator generating creative concepts...")
+    
+    # Import voice library for selection
+    from agents.audio_agent import VOICE_LIBRARY
+    
+    # Build style selection prompt if needed
+    style_selection_prompt = ""
+    if style_preset == "✨ AI Auto-Select":
+        available_styles = list(STYLE_PRESETS.keys())
+        style_selection_prompt = f"""
+        
+4. **Visual Style Selection**: Choose the BEST visual style from these options:
+   {', '.join(available_styles)}
+   
+   Output format:
+   SELECTED_STYLE: [Style Name]
+"""
+    
+    # Build voice selection prompt
+    available_voices = list(VOICE_LIBRARY.keys())
+    voice_selection_prompt = f"""
+    
+5. **Voice Selection**: Choose the BEST voice for the narration based on:
+   - Brand Tone: {brand_tone}
+   - Target Audience: {target_audience}
+   
+   Available voices: {', '.join(available_voices)}
+   
+   Output format:
+   SELECTED_VOICE: [Voice Key]
+"""
+    
     innovator_prompt = f"""You are the Visionary Creative Director.
     Your goal: Brainstorm 3 distinct, innovative concepts for a video.
     
     Goal: {goal}
     Product: {product_desc}
     Audience: {target_audience}
+    Brand Tone: {brand_tone}
     
     Generate 3 Concepts:
     1. **The Emotional Hook**: Focus on feelings/story.
@@ -102,9 +134,13 @@ def create_storyboard_with_autogen(goal, target_audience, product_desc, num_scen
     Output format:
     SELECTED_CONCEPT: [Name of Concept]
     CONCEPT_DETAILS: [Brief description of the creative direction, mood, and twist]
+    {style_selection_prompt}
+    {voice_selection_prompt}
     """
     
     creative_concept = "Standard Showcase" # Default
+    selected_voice = "male_calm"  # Default
+    
     try:
         innovator_response = client.chat.completions.create(
             model=model,
@@ -114,12 +150,31 @@ def create_storyboard_with_autogen(goal, target_audience, product_desc, num_scen
         innovator_output = innovator_response.choices[0].message.content
         print(f"✨ Innovator Output:\n{innovator_output[:200]}...")
         
-        # Simple parsing
+        # Parse concept
         if "SELECTED_CONCEPT:" in innovator_output:
             creative_concept = innovator_output.split("SELECTED_CONCEPT:")[1].split("\n")[0].strip()
             details = innovator_output.split("CONCEPT_DETAILS:")[1].strip() if "CONCEPT_DETAILS:" in innovator_output else ""
             creative_concept += f" - {details}"
             print(f"🚀 Selected Creative Concept: {creative_concept}")
+        
+        # Parse style if AI Auto-Select
+        if style_preset == "✨ AI Auto-Select" and "SELECTED_STYLE:" in innovator_output:
+            ai_selected_style = innovator_output.split("SELECTED_STYLE:")[1].split("\n")[0].strip()
+            if ai_selected_style in STYLE_PRESETS:
+                style_preset = ai_selected_style
+                print(f"🎨 AI Selected Style: {style_preset}")
+            else:
+                style_preset = "Cinematic"  # Fallback
+                print(f"⚠️ Invalid style '{ai_selected_style}', using Cinematic")
+        
+        # Parse voice
+        if "SELECTED_VOICE:" in innovator_output:
+            ai_selected_voice = innovator_output.split("SELECTED_VOICE:")[1].split("\n")[0].strip()
+            if ai_selected_voice in VOICE_LIBRARY:
+                selected_voice = ai_selected_voice
+                print(f"🎙️ AI Selected Voice: {selected_voice} ({VOICE_LIBRARY[selected_voice]})")
+            else:
+                print(f"⚠️ Invalid voice '{ai_selected_voice}', using default")
             
     except Exception as e:
         print(f"⚠️ Innovator failed: {e}. Proceeding with standard concept.")
@@ -163,6 +218,11 @@ Output a clear plan. Do NOT write JSON."""
 
     # --- STEP 2: Creative Director ---
     print("🤖 Step 2: Creative Director breaking down scenes...")
+    
+    # Get actual voice style from library
+    from agents.audio_agent import VOICE_LIBRARY
+    voice_style_code = VOICE_LIBRARY.get(selected_voice, "en-US-ChristopherNeural")
+    
     director_prompt = f"""You are the Creative Director.
 Your goal: Break the Strategist's plan into specific scenes and output the FINAL JSON.
 
@@ -172,33 +232,33 @@ Strategy Plan:
 {asset_context}
 
 For each scene, define:
-For each scene, define:
 - **Script**: Voiceover (5-15 words). MUST speak directly to the "Persona" defined above using their "Voice". Address their "Pain Point" or "Desire".
-- **Action**: What happens?
 - **Action**: What happens?
 - **Duration**: MUST be 3, 4, or 5 seconds only.
 - **Visual Prompt**: Detailed cinematic description applying the Style Guide. Include:
   * Subject description
   * Lighting (volumetric, rim light, softbox, etc.)
   * Camera (lens type like 85mm, movement like slow pan, angle like low angle)
-  * Subject description
-  * Lighting (volumetric, rim light, softbox, etc.)
-  * Camera (lens type like 85mm, movement like slow pan, angle like low angle)
   * Render style ("Unreal Engine 5", "Octane Render", "8k", "Cinematic", "Photorealistic")
   * **MANDATORY**: Append these keywords to EVERY visual prompt: "{STYLE_PRESETS.get(style_preset, "")}"
+
+**CRITICAL TYPOGRAPHY RULE**:
+- You MUST generate a `kinetic_typography` array for EVERY scene.
+- The array MUST have one entry per word in the script.
+- Use animation styles: "pop", "grow", "slide_in", "fade".
+- Use colors that match the visual style.
 
 Rules:
 - If using an uploaded image, use `visual_type='i2v'` and `asset_query='image_X'`.
 - If generating from scratch, use `visual_type='t2v'` and asset_query with brief description.
 - Scene 1 `start_from_previous_end` MUST be false.
 - Duration MUST be 3, 4, or 5 seconds.
-- Generate kinetic_typography array with one entry per word in the script.
 
 Output Structure (VALID JSON ONLY):
 {{
   "style_preset": "{style_preset}",
   "music_prompt": "...",
-  "voice_style": "en-US-ChristopherNeural",
+  "voice_style": "{voice_style_code}",
   "scenes": [
     {{
       "scene": 1,
@@ -545,23 +605,37 @@ def refine_storyboard_context(storyboard_json, goal, target_audience, product_de
         visual_prompt = scene.get('visual_prompt', '').strip()
         phase = scene.get('phase')
         
-        # Generate contextually appropriate scripts based on phase and actual inputs
-        if phase == 'reveal':
-            # First scene - introduce the product with the uploaded image
+        # Get the AI-generated script
+        ai_script = scene.get('script', '').strip()
+        
+        # Only use fallback templates if AI script is missing or too generic
+        use_fallback = (
+            not ai_script or 
+            len(ai_script.split()) < 3 or  # Too short
+            ai_script.lower() in ['...', 'tbd', 'placeholder']  # Placeholder text
+        )
+        
+        if use_fallback:
+            # Generate contextually appropriate fallback scripts
             product_name = product_handle.capitalize()
-            script = f"Meet {product_name}. Your new energy."
-        elif phase == 'hook' and i == 0:
-            # Alternative hook if it's first scene
-            script = f"Ready to elevate your energy?"
-        elif phase == 'benefit':
-            script = f"Fuel your active lifestyle. Stay energized."
-        elif phase == 'social_proof':
-            script = f"Join {target_audience.split(',')[0]} who love it."
-        elif phase == 'cta':
-            script = f"Grab {product_handle.capitalize()} today. Feel the rush."
+            if phase == 'reveal':
+                script = f"Meet {product_name}. Your new energy."
+            elif phase == 'hook' and i == 0:
+                script = f"Ready to elevate your energy?"
+            elif phase == 'benefit':
+                script = f"Fuel your active lifestyle. Stay energized."
+            elif phase == 'social_proof':
+                script = f"Join {target_audience.split(',')[0]} who love it."
+            elif phase == 'cta':
+                script = f"Grab {product_name} today. Feel the rush."
+            else:
+                script = f"Experience {product_handle}."
+            print(f"⚠️ Scene {i+1}: Using fallback script (AI script was: '{ai_script}')")
         else:
-            # Keep existing script if it's reasonable
-            script = scene.get('script', f"Experience {product_handle}.")
+            # Keep the AI's creative script
+            script = ai_script
+            print(f"✅ Scene {i+1}: Preserving AI script: '{script[:50]}...'")
+
 
         # --- MARKETING INTELLIGENCE: Hook & CTA Optimization ---
         if phase == 'hook' or (i == 0 and phase == 'reveal'):

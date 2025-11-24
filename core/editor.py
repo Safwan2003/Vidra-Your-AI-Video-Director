@@ -158,7 +158,17 @@ def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, o
     elif style['position'] == 'bottom':
         base_y_pos = int(0.8 * video_height)
 
-    print(f"🔤 Creating {len(kinetic_typography_data)} kinetic text animations...")
+    # --- DEBUG LOGGING ---
+    print(f"🔤 Creating kinetic text for {len(kinetic_typography_data)} words...")
+    print(f"   Style Preset: {style_preset}")
+    print(f"   Word Timings Available: {len(word_timings_for_scene)}")
+    if len(kinetic_typography_data) == 0:
+        print("   ⚠️ WARNING: kinetic_typography_data is EMPTY! No text will be generated.")
+        return []
+    if len(word_timings_for_scene) == 0:
+        print("   ⚠️ WARNING: word_timings_for_scene is EMPTY! Text timing will fail.")
+        return []
+    # ---------------------
 
     for i, word_data in enumerate(kinetic_typography_data):
         word_text = word_data['word']

@@ -14,6 +14,26 @@ from core.utils import get_generated_paths
 
 nest_asyncio.apply()  # Fix for "event loop already running" in Jupyter
 
+# --- VOICE LIBRARY ---
+VOICE_LIBRARY = {
+    "male_energetic": "en-US-GuyNeural",
+    "male_calm": "en-US-ChristopherNeural",
+    "male_authoritative": "en-US-DavisNeural",
+    "female_energetic": "en-US-JennyNeural",
+    "female_calm": "en-US-AriaNeural",
+    "female_friendly": "en-US-SaraNeural"
+}
+
+# --- MUSIC LIBRARY ---
+MUSIC_LIBRARY = {
+    "upbeat": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "epic": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "calm": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "energetic": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "corporate": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "motivational": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"
+}
+
 async def generate_audio_async(text, voice_style="en-US-ChristopherNeural", output_file="voiceover.mp3", status=None):
     """Generates voiceover using edge-tts with dynamic voice selection and returns word timings."""
     message = f"🎙️ Generating voiceover with {voice_style}..."
@@ -115,15 +135,25 @@ def fetch_sfx(query, output_dir, status=None):
 
 def download_stock_music(prompt="upbeat", duration=10, output_dir=".", output_filename="background_music.mp3"):
     """
-    Downloads a high-quality royalty-free stock track as a fallback.
+    Downloads a high-quality royalty-free stock track from the music library.
     """
-    print(f"🎵 Downloading stock music for '{prompt}'...")
+    # Detect mood from prompt
+    mood = "upbeat"  # Default
+    prompt_lower = prompt.lower()
     
-    # URL for a royalty-free upbeat corporate track (Example from Pixabay/FMA or similar)
-    # Using a reliable test URL for "Upbeat" music. 
-    # In production, this should be a library of URLs or an API.
-    # For now, we use a known "Corporate Upbeat" sample.
-    stock_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" 
+    if "epic" in prompt_lower or "dramatic" in prompt_lower:
+        mood = "epic"
+    elif "calm" in prompt_lower or "relaxing" in prompt_lower or "soft" in prompt_lower:
+        mood = "calm"
+    elif "energetic" in prompt_lower or "high energy" in prompt_lower or "intense" in prompt_lower:
+        mood = "energetic"
+    elif "corporate" in prompt_lower or "professional" in prompt_lower:
+        mood = "corporate"
+    elif "motivational" in prompt_lower or "inspiring" in prompt_lower:
+        mood = "motivational"
+    
+    stock_url = MUSIC_LIBRARY.get(mood, MUSIC_LIBRARY["upbeat"])
+    print(f"🎵 Downloading '{mood}' stock music for '{prompt}'...")
     
     output_path = os.path.join(output_dir, output_filename)
     
