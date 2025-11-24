@@ -3,6 +3,8 @@
 import os
 import time
 import requests
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+import numpy as np
 
 # MOVIEPY v2.0 FIX (Robust Import)
 try:
@@ -48,6 +50,56 @@ def parse_overlay_style(style_str):
         'padding': padding
     }
 
+def create_text_image_with_pil(text, font_path, font_size, color, stroke_color, stroke_width, shadow_color=None, shadow_offset=(0,0), blur_radius=0):
+    """
+    Creates a transparent image with text using Pillow, supporting Shadows and Glows.
+    """
+    try:
+        # Load font
+        try:
+            font = ImageFont.truetype(font_path, font_size)
+        except:
+            font = ImageFont.load_default()
+
+        # Calculate text size
+        dummy_img = Image.new('RGBA', (1, 1))
+        draw = ImageDraw.Draw(dummy_img)
+        bbox = draw.textbbox((0, 0), text, font=font, stroke_width=stroke_width)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+        
+        # Add padding for shadow/glow
+        padding = int(max(abs(shadow_offset[0]), abs(shadow_offset[1])) + blur_radius * 2 + 20)
+        width = text_w + padding * 2
+        height = text_h + padding * 2
+        
+        # Create base image
+        img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+        
+        # Draw Shadow / Glow
+        if shadow_color:
+            shadow_layer = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+            shadow_draw = ImageDraw.Draw(shadow_layer)
+            # Draw shadow text
+            shadow_x = padding + shadow_offset[0]
+            shadow_y = padding + shadow_offset[1]
+            shadow_draw.text((shadow_x, shadow_y), text, font=font, fill=shadow_color, stroke_width=stroke_width+2, stroke_fill=shadow_color)
+            
+            if blur_radius > 0:
+                shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(blur_radius))
+            
+            img = Image.alpha_composite(img, shadow_layer)
+
+        # Draw Main Text
+        draw = ImageDraw.Draw(img)
+        draw.text((padding, padding), text, font=font, fill=color, stroke_fill=stroke_color, stroke_width=stroke_width)
+        
+        return np.array(img)
+        
+    except Exception as e:
+        print(f"❌ PIL Text Generation failed: {e}")
+        return None
+
 def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, overlay_style_str, video_width, video_height, font_path=None, scene_start_offset=0, style_preset="Cinematic"):
     """
     Generates a list of animated TextClips for AI-driven kinetic typography with proper animations.
@@ -65,23 +117,38 @@ def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, o
     # Override defaults based on style_preset
     text_color_override = None
     stroke_color_override = 'black'
+    shadow_color = "black"
+    shadow_offset = (5, 5)
+    blur_radius = 0
     
     if style_preset == "Cyberpunk":
-        font = "Impact" # Bold, industrial
+        font = "Impact" 
         text_color_override = "#39ff14" # Neon Green
         stroke_color_override = "#ff00ff" # Neon Pink stroke
+        shadow_color = "#39ff14" # Green Glow
+        shadow_offset = (0, 0)
+        blur_radius = 15 # Strong Glow
     elif style_preset == "Luxury":
-        font = "Times-New-Roman-Bold" # Serif
+        font = "Times-New-Roman-Bold" 
         text_color_override = "#ffd700" # Gold
         stroke_color_override = "black"
+        shadow_color = "black"
+        shadow_offset = (4, 4)
+        blur_radius = 5 # Soft Shadow
     elif style_preset == "High Energy":
         font = "Arial-Black"
         text_color_override = "yellow"
         stroke_color_override = "red"
+        shadow_color = "black"
+        shadow_offset = (8, 8) # Hard drop shadow
+        blur_radius = 0
     elif style_preset == "TV Commercial":
         font = "Arial-Bold"
-        text_color_override = "#333333" # Dark Grey for clean look on white
-        stroke_color_override = "white" # White stroke for separation
+        text_color_override = "#333333" 
+        stroke_color_override = "white" 
+        shadow_color = "rgba(0,0,0,0.3)" # Subtle shadow
+        shadow_offset = (3, 3)
+        blur_radius = 2
     # ------------------------------
 
     # Position based on style
@@ -122,17 +189,35 @@ def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, o
         word_end = max(word_start + 0.1, timing['end'] - scene_start_offset)
         duration = word_end - word_start
 
-        # Create text clip with stroke for visibility
+        # Create text clip using PIL (Robust fallback)
         try:
-            word_clip = TextClip(
-                word_text,
-                fontsize=font_size,
-                color=color,
-                font=font,
-                stroke_color=stroke_col,
-                stroke_width=4, # Thicker stroke for better separation
-                method='label'
-            ).set_start(word_start).set_duration(duration)
+            # Generate text image with PRO effects
+            txt_img_array = create_text_image_with_pil(
+                word_text, 
+                font if font.endswith(".ttf") or font.endswith(".otf") else "arial.ttf", 
+                font_size, 
+                color, 
+                stroke_col, 
+                4,
+                shadow_color=shadow_color,
+                shadow_offset=shadow_offset,
+                blur_radius=blur_radius
+            )
+            
+            if txt_img_array is not None:
+                word_clip = ImageClip(txt_img_array).set_start(word_start).set_duration(duration)
+            else:
+                # Fallback to MoviePy TextClip if PIL fails (unlikely)
+                word_clip = TextClip(
+                    word_text,
+                    fontsize=font_size,
+                    color=color,
+                    font=font,
+                    stroke_color=stroke_col,
+                    stroke_width=4,
+                    method='label'
+                ).set_start(word_start).set_duration(duration)
+                
         except Exception as e:
             print(f"  ⚠️ Failed to create TextClip for '{word_text}': {e}")
             continue
@@ -143,28 +228,33 @@ def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, o
 
         # Apply animation based on style
         if anim_style == 'pop':
-            # Scale from 150% down to 100%
+            # Scale with OVERSHOOT (Bounce)
             def pop_scale(t):
                 if t < anim_in:
-                    return 1.5 - 0.5 * (t / anim_in)
+                    progress = t / anim_in
+                    # Overshoot formula: goes to 1.2 then settles at 1.0
+                    return 1.0 + 0.2 * np.sin(progress * np.pi) 
                 return 1.0
             word_clip = word_clip.resize(pop_scale)
             word_clip = word_clip.crossfadein(anim_in).crossfadeout(anim_out)
             
         elif anim_style == 'grow':
-            # Scale from 50% up to 100%
+            # Smooth Ease-Out Grow
             def grow_scale(t):
                 if t < anim_in:
-                    return 0.5 + 0.5 * (t / anim_in)
+                    p = t / anim_in
+                    return 0.5 + 0.5 * (1 - (1 - p) * (1 - p)) # Quadratic Ease Out
                 return 1.0
             word_clip = word_clip.resize(grow_scale)
             word_clip = word_clip.crossfadein(anim_in).crossfadeout(anim_out)
             
         elif anim_style == 'slide_in':
-            # Slide from right to center
+            # Slide with Ease-Out
             def slide_pos(t):
                 if t < anim_in:
-                    offset = (1 - t / anim_in) * (video_width / 2)
+                    p = t / anim_in
+                    ease_p = 1 - (1 - p) * (1 - p) # Quadratic Ease Out
+                    offset = (1 - ease_p) * (video_width / 2)
                     return (video_width / 2 + offset, base_y_pos)
                 return ('center', base_y_pos)
             word_clip = word_clip.set_position(slide_pos)

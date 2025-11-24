@@ -8,6 +8,7 @@ from agents.audio_agent import generate_storyboard_audio
 from core.editor import assemble_storyboard_video
 import os
 import json
+from datetime import datetime
 
 # --- Page Config ---
 st.set_page_config(
@@ -38,13 +39,15 @@ with st.sidebar:
     )
     
     # NEW: Style Selector
-    style_names = list(STYLE_PRESETS.keys())
+    style_names = ["✨ AI Auto-Select"] + list(STYLE_PRESETS.keys())
     selected_style = st.selectbox("Visual Style", style_names, index=0)
-    st.caption(f"✨ *{STYLE_PRESETS[selected_style]}*")
+    
+    style_desc = "The AI will choose the best style for your product." if selected_style == "✨ AI Auto-Select" else STYLE_PRESETS[selected_style]
+    st.caption(f"✨ *{style_desc}*")
 
-    target_audience = st.text_input("Target Audience", "Young adults, tech-savvy, active lifestyle")
-    product_description = st.text_input("Product Description", "Futuristic energy drink with glowing neon can")
-    brand_tone = st.text_input("Brand Tone", "Bold, energetic, cinematic")
+    target_audience = st.text_input("Target Audience", "Fitness enthusiasts, bodybuilders, health-conscious")
+    product_description = st.text_input("Product Description", "Premium Whey Protein Powder, Chocolate flavor, sleek black tub with gold label")
+    brand_tone = st.text_input("Brand Tone", "Strong, motivating, premium")
 
     st.header("2. Visual Assets")
     uploaded_files = st.file_uploader(
@@ -143,7 +146,16 @@ if st.session_state.storyboard:
                 updated_scenes.append(scene)
             
             sb['scenes'] = updated_scenes
+            sb['scenes'] = updated_scenes
             st.session_state.storyboard = sb
+            
+            # Save Project Button
+            st.download_button(
+                "💾 Save Project (JSON)", 
+                data=json.dumps(st.session_state.storyboard, indent=2), 
+                file_name=f"vidra_project_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json"
+            )
 
         # --- Generation Button ---
         if st.button("🚀 Generate Video (Parallel)", type="primary", use_container_width=True):
@@ -182,9 +194,13 @@ if st.session_state.storyboard:
                 audio_res = generate_storyboard_audio(st.session_state.storyboard, use_music, status=status)
                 
                 # 3. Assembly
+                # 3. Assembly
                 status.write("🎞️ Assembling Final Video...")
                 brand_logo = os.path.join("brand_assets", "logo.png") if brand_logo_file else None
                 brand_font = None # Logic for font path if needed
+                
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                output_filename = f"vidra_output_{timestamp}.mp4"
                 
                 final_path = assemble_storyboard_video(
                     storyboard_plan=st.session_state.storyboard,
@@ -193,6 +209,7 @@ if st.session_state.storyboard:
                     music_path=audio_res.get('music_path'),
                     full_word_timings=audio_res['word_timings'],
                     brand_logo_path=brand_logo,
+                    output_filename=output_filename,
                     status=status
                 )
                 
