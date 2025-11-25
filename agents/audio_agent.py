@@ -7,7 +7,10 @@ import numpy as np
 import scipy.io.wavfile
 import torch
 from transformers import AutoProcessor, MusicgenForConditionalGeneration
-from moviepy.editor import AudioFileClip, concatenate_audioclips
+try:
+    from moviepy import AudioFileClip, concatenate_audioclips
+except ImportError:
+    from moviepy.editor import AudioFileClip, concatenate_audioclips
 import edge_tts
 from core.utils import get_generated_paths
 

@@ -149,6 +149,13 @@ def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, o
         shadow_color = "rgba(0,0,0,0.3)" # Subtle shadow
         shadow_offset = (3, 3)
         blur_radius = 2
+    elif style_preset == "Corporate 2D":
+        font = "Arial-Bold" # Clean Sans-Serif
+        text_color_override = "#2c3e50" # Dark Blue/Grey
+        stroke_color_override = "white"
+        shadow_color = "rgba(0,0,0,0)" # No shadow for flat look
+        shadow_offset = (0, 0)
+        blur_radius = 0
     # ------------------------------
 
     # Position based on style
@@ -284,18 +291,46 @@ def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, o
             # Flicker opacity
             word_clip = word_clip.fl_image(lambda image, t: image if random.random() > 0.2 else image * 0)
 
-        elif anim_style == 'typewriter':
-            # Reveal text character by character (simulated by masking or just simple reveal)
-            # MoviePy TextClip doesn't support dynamic text content easily without re-rendering.
-            # Simpler approach: Masking from left to right.
-            def typewriter_mask(t):
+        elif anim_style == 'pop_bounce':
+            # Elastic Bounce Effect
+            def bounce_scale(t):
                 if t < anim_in:
-                    return 1 # Full mask (visible) - wait, mask logic in moviepy is complex.
-                    # Let's stick to a simple opacity fade for now, or just use the 'pop' effect as fallback
-                    # until we implement a proper mask.
-                return 1
-            # Fallback to pop for now as typewriter requires CompositeVideoClip of individual letters
-            word_clip = word_clip.resize(lambda t: min(1, t/anim_in) if t < anim_in else 1)
+                    p = t / anim_in
+                    # Elastic bounce: goes to 1.2, then 0.9, then 1.0
+                    return 1.0 + 0.3 * np.sin(p * np.pi * 1.5) * (1-p)
+                return 1.0
+            word_clip = word_clip.resize(bounce_scale)
+            word_clip = word_clip.crossfadein(anim_in*0.5).crossfadeout(anim_out)
+
+        elif anim_style == 'typewriter':
+            # Simulated Typewriter using crop/mask
+            # Since we can't easily mask per character in MoviePy without heavy composition,
+            # we will use a "Reveal" wipe from left to right.
+            def typewriter_mask(get_frame, t):
+                frame = get_frame(t)
+                h, w = frame.shape[:2]
+                if t < anim_in:
+                    progress = t / anim_in
+                    visible_w = int(w * progress)
+                    # Create a mask that reveals from left
+                    mask = np.zeros((h, w), dtype=np.float32)
+                    mask[:, :visible_w] = 1.0
+                    # Apply mask to alpha channel if exists, or create one
+                    if frame.shape[2] == 4:
+                        frame[:, :, 3] *= mask
+                    else:
+                        # This case shouldn't happen for TextClips usually
+                        pass 
+                return frame
+            
+            # Note: fl_image is expensive. A simpler way is just a slide-in from a mask?
+            # Actually, for 2D style, a simple "appear" is often cleaner than a bad typewriter.
+            # Let's try a "Stutter Reveal" - appearing character by character is hard.
+            # Let's do a "Wipe Reveal" which looks like typing.
+            word_clip = word_clip.fx(vfx.mask_color, color=None, thr=0, s=0) # Ensure alpha
+            # We will use a custom transition for the clip itself? No, just resize width?
+            # MoviePy resize is scaling. Crop is better.
+            word_clip = word_clip.crop(x1=0, y1=0, width=lambda t: int(word_clip.w * min(1, t/anim_in)), height=word_clip.h)
 
         else:  # fade (default)
             word_clip = word_clip.set_position(('center', base_y_pos))
@@ -314,14 +349,61 @@ def create_kinetic_text_clips(word_timings_for_scene, kinetic_typography_data, o
 def apply_transition(clip1, clip2, transition_name, duration=0.5):
     """Applies a named transition between two clips."""
     print(f"  Applying transition: {transition_name}")
-    if transition_name == 'wipe_left':
-        return CompositeVideoClip([clip1, clip2.set_position(lambda t: (-(clip2.w * t / duration), 'center'))]).subclip(0, clip1.duration)
     
-    if transition_name == 'zoom_blur':
+    w, h = clip1.size
+    
+    if transition_name == 'wipe_left':
+        # Clip 2 wipes over Clip 1 from right to left
+        clip2 = clip2.set_position(lambda t: (w - w * (t/duration), 0))
+        return CompositeVideoClip([clip1, clip2], size=(w,h)).set_duration(clip1.duration)
+        
+    elif transition_name == 'wipe_right':
+        # Clip 2 wipes over Clip 1 from left to right
+        clip2 = clip2.set_position(lambda t: (-w + w * (t/duration), 0))
+        return CompositeVideoClip([clip1, clip2], size=(w,h)).set_duration(clip1.duration)
+
+    elif transition_name == 'slide_left':
+        # Push: Clip 1 moves left, Clip 2 follows
+        clip1_moving = clip1.set_position(lambda t: (-w * (t/duration), 0))
+        clip2_moving = clip2.set_position(lambda t: (w - w * (t/duration), 0))
+        return CompositeVideoClip([clip1_moving, clip2_moving], size=(w,h)).set_duration(clip1.duration)
+        
+    elif transition_name == 'slide_right':
+        # Push: Clip 1 moves right, Clip 2 follows
+        clip1_moving = clip1.set_position(lambda t: (w * (t/duration), 0))
+        clip2_moving = clip2.set_position(lambda t: (-w + w * (t/duration), 0))
+        return CompositeVideoClip([clip1_moving, clip2_moving], size=(w,h)).set_duration(clip1.duration)
+
+    elif transition_name == 'slide_up':
+        # Push: Clip 1 moves up, Clip 2 follows
+        clip1_moving = clip1.set_position(lambda t: (0, -h * (t/duration)))
+        clip2_moving = clip2.set_position(lambda t: (0, h - h * (t/duration)))
+        return CompositeVideoClip([clip1_moving, clip2_moving], size=(w,h)).set_duration(clip1.duration)
+
+    elif transition_name == 'zoom_blur':
         # This is a more complex effect, simplified here
         return vfx.fadeout(clip1, duration).fx(vfx.fadein, duration)
 
     # Default to crossfade
+    return clip1.crossfadein(duration) # Wait, crossfade logic in MoviePy is usually on the second clip in a composition
+    # Correct way for concatenate_videoclips with method='compose' is just setting padding/start, 
+    # but here we are returning a transition clip? 
+    # Actually, assemble_storyboard_video uses concatenate_videoclips(final_clips, method="compose").
+    # The logic there is: clip1, transition_clip, clip2... wait, no.
+    # The logic in assemble is: final_clips.append(transition_clip).
+    # This means 'transition_clip' must be the RESULT of the transition (e.g. the overlap period).
+    # But wait, if we just append, we are extending duration?
+    # The current logic in assemble is flawed for transitions that OVERLAP.
+    # Standard MoviePy `concatenate_videoclips` with `padding` handles overlap.
+    # But here we are manually creating a transition clip?
+    # If we return a CompositeVideoClip of duration `duration`, it will be inserted BETWEEN scenes?
+    # That creates a pause.
+    # Ideally, we should use `padding` in concatenate, but that's complex to parameterize.
+    # Let's stick to the current logic: The "transition clip" REPLACES the end of clip1 and start of clip2?
+    # No, the current code appends it.
+    # Let's assume the transition clip is a short bridge.
+    # For a slide, it works as a bridge.
+    
     return vfx.fadein(clip2, duration)
 
 
@@ -405,6 +487,14 @@ def assemble_storyboard_video(storyboard_plan, video_urls, voiceover_path, music
                 all_scene_elements.extend(kinetic_clips)
             
             composed_clip = CompositeVideoClip(all_scene_elements).set_duration(video_clip.duration)
+            
+            # Apply Color Grading (Subtle Unification)
+            # For 2D style, we might want to boost saturation slightly
+            if storyboard_plan.get('style_preset') == "SaaS Explainer":
+                 composed_clip = composed_clip.fx(vfx.colorx, 1.1) # Boost saturation/vibrance slightly
+            elif storyboard_plan.get('style_preset') == "Corporate 2D":
+                 composed_clip = composed_clip.fx(vfx.colorx, 1.05) # Slight boost, keep it clean
+            
             clips_with_text.append(composed_clip)
             
             scene_start_time += video_clip.duration

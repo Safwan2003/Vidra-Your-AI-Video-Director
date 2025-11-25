@@ -17,7 +17,7 @@ def _get_api_key(status=None):
         return None
     return api_key
 
-def submit_video_task(scene_plan, asset_map, aspect_ratio="16:9", last_frame_path=None):
+def submit_video_task(scene_plan, asset_map, aspect_ratio="16:9", last_frame_path=None, style_preset="Cinematic"):
     """
     Submits a video generation task to Dashscope and returns the task_id.
     Does NOT wait for completion.
@@ -43,9 +43,24 @@ def submit_video_task(scene_plan, asset_map, aspect_ratio="16:9", last_frame_pat
 
     params = {
         'prompt': f"{asset_query}, {visual_prompt}",
-        'negative_prompt': "distortion, morphing, blurry, text, human face, bad quality, low resolution",
-        'size': size
     }
+    # --- Style-Specific Prompt Tuning ---
+    negative_prompt = "distortion, morphing, blurry, text, human face, bad quality, low resolution"
+    
+    if style_preset == "SaaS Explainer":
+        # Force 2D Vector Style
+        if "flat" not in params['prompt'].lower():
+            params['prompt'] += ", flat 2d vector art, clean lines, minimalist, corporate memphis, adobe illustrator style, no gradients"
+        negative_prompt += ", photorealistic, 3d render, shading, shadows, bokeh, depth of field, realistic texture, noise, grain"
+    
+    elif style_preset == "Corporate 2D":
+        # Strict 2D Vector Style (WhatAStory.agency look)
+        if "flat" not in params['prompt'].lower():
+            params['prompt'] += ", flat 2d vector art, corporate memphis style, clean lines, solid colors, minimal, motion graphics, behance, dribbble, vector illustration, no gradients, flat design"
+        negative_prompt += ", photorealistic, 3d, shading, shadows, gradients, texture, noise, grain, detail, realistic, bokeh, depth of field, complex background"
+
+    params['negative_prompt'] = negative_prompt
+    params['size'] = size
 
     # Continuity / Image Setup
     image_path = None
@@ -58,12 +73,12 @@ def submit_video_task(scene_plan, asset_map, aspect_ratio="16:9", last_frame_pat
         if not image_path or not os.path.exists(image_path):
             return {"error": f"Image asset not found: {asset_query}"}
 
-    # Model Selection
+    # Model Selection - Using Wan 2.5 for better illustration/anime style support
     if visual_type == 'i2v':
-        model = 'wan2.1-i2v-plus'
+        model = 'wan2.5-i2v-preview'
         params['img_url'] = f"file://{os.path.abspath(image_path)}"
     elif visual_type == 't2v':
-        model = 'wan2.1-t2v-plus'
+        model = 'wan2.5-t2v-preview'
     else:
         return {"error": f"Unsupported visual_type: {visual_type}"}
 
@@ -113,6 +128,7 @@ def generate_scenes_parallel(storyboard_plan, asset_map, aspect_ratio="16:9", st
     Updates a Streamlit status container if provided.
     """
     scenes = storyboard_plan['scenes']
+    style_preset = storyboard_plan.get('style_preset', 'Cinematic')
     tasks = {} # scene_index -> task_info
     results = [None] * len(scenes)
     
@@ -134,7 +150,7 @@ def generate_scenes_parallel(storyboard_plan, asset_map, aspect_ratio="16:9", st
         if scene.get('start_from_previous_end'):
             print(f"⚠️ Scene {i+1} requested continuity, but parallel generation skips this to save time.")
         
-        task_info = submit_video_task(scene, asset_map, aspect_ratio)
+        task_info = submit_video_task(scene, asset_map, aspect_ratio, style_preset=style_preset)
         tasks[i] = task_info
         
         if task_info.get('error'):
@@ -189,9 +205,9 @@ def generate_scenes_parallel(storyboard_plan, asset_map, aspect_ratio="16:9", st
     return results
 
 # Legacy wrapper for backward compatibility if needed
-def generate_video_scene(scene_plan, asset_map, aspect_ratio="16:9", status=None, last_frame_path=None):
+def generate_video_scene(scene_plan, asset_map, aspect_ratio="16:9", status=None, last_frame_path=None, style_preset="Cinematic"):
     """Legacy synchronous wrapper."""
-    task = submit_video_task(scene_plan, asset_map, aspect_ratio, last_frame_path)
+    task = submit_video_task(scene_plan, asset_map, aspect_ratio, last_frame_path, style_preset=style_preset)
     if task.get('error'):
         if status: status.update(label=f"Error: {task['error']}", state="error")
         return None

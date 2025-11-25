@@ -34,20 +34,20 @@ with st.sidebar:
     st.header("1. Strategy & Style")
     video_goal = st.selectbox(
         "Select Video Goal", 
-        ["Product/Feature Launch", "Explainer Video", "Benefits Showcase", "Social Media Hype"], 
+        ["Explainer Video", "Product/Feature Launch", "Benefits Showcase", "Social Media Hype"], 
         index=0
     )
     
     # NEW: Style Selector
-    style_names = ["✨ AI Auto-Select"] + list(STYLE_PRESETS.keys())
+    style_names = ["Corporate 2D", "✨ AI Auto-Select"] + [k for k in STYLE_PRESETS.keys() if k != "Corporate 2D"]
     selected_style = st.selectbox("Visual Style", style_names, index=0)
     
     style_desc = "The AI will choose the best style for your product." if selected_style == "✨ AI Auto-Select" else STYLE_PRESETS[selected_style]
     st.caption(f"✨ *{style_desc}*")
 
-    target_audience = st.text_input("Target Audience", "Tech-savvy professionals, early adopters, fitness enthusiasts")
-    product_description = st.text_input("Product Description", "Futuristic AI-powered smartwatch with holographic display, sleek titanium frame, health monitoring")
-    brand_tone = st.text_input("Brand Tone", "Innovative, cutting-edge, premium")
+    target_audience = st.text_input("Target Audience", "Content creators, marketers, SaaS founders, video production teams")
+    product_description = st.text_input("Product Description", "Vidra - AI-powered video director that creates professional explainer videos and product launches automatically using AI")
+    brand_tone = st.text_input("Brand Tone", "Innovative, empowering, professional, creative")
 
     st.header("2. Visual Assets")
     uploaded_files = st.file_uploader(
@@ -70,7 +70,7 @@ with st.sidebar:
 
     st.header("3. Configuration")
     aspect_ratio = st.selectbox("Aspect Ratio", ["16:9", "9:16", "1:1"], index=0)
-    num_scenes = st.slider("Number of Scenes", min_value=2, max_value=5, value=3)
+    num_scenes = st.slider("Number of Scenes", min_value=1, max_value=7, value=1)
     use_music = st.checkbox("Generate Background Music", True)
 
     st.header("4. Brand Kit")

@@ -13,7 +13,9 @@ STYLE_PRESETS = {
     "High Energy": "Dynamic camera movement, Fast cuts, Vibrant saturation, GoPro Hero style, Wide angle 16mm, Motion blur, Action-packed, High contrast.",
     "Luxury": "Golden hour, Soft focus, Bokeh, Warm tones, Slow motion, Elegant, Expensive texture, Macro details, Leica lens.",
     "Cyberpunk": "Neon lights, Night time, Wet streets, Blue and Pink color palette, Futuristic, Glow effects, High contrast, Blade Runner style.",
-    "TV Commercial": "High Key lighting, Bright, Sharp focus, Super clean, White background, 8k, Product photography style, Studio lighting, Commercial look."
+    "TV Commercial": "High Key lighting, Bright, Sharp focus, Super clean, White background, 8k, Product photography style, Studio lighting, Commercial look.",
+    "SaaS Explainer": "Flat vector art, corporate memphis style, solid colors, no gradients, clean lines, Adobe Illustrator style, 2D animation, minimalist, high contrast, vibrant colors, no shadows, no shading, no bokeh, no photorealism.",
+    "Corporate 2D": "Flat 2D vector art, corporate memphis style, clean lines, solid colors, minimal, motion graphics, behance, dribbble, vector illustration, no gradients, flat design."
 }
 
 def get_image_descriptions(asset_map):
@@ -160,6 +162,8 @@ def create_storyboard_with_autogen(goal, target_audience, product_desc, num_scen
         # Parse style if AI Auto-Select
         if style_preset == "✨ AI Auto-Select" and "SELECTED_STYLE:" in innovator_output:
             ai_selected_style = innovator_output.split("SELECTED_STYLE:")[1].split("\n")[0].strip()
+            # Strip markdown formatting (**, *, etc.)
+            ai_selected_style = ai_selected_style.replace("**", "").replace("*", "").strip()
             if ai_selected_style in STYLE_PRESETS:
                 style_preset = ai_selected_style
                 print(f"🎨 AI Selected Style: {style_preset}")
@@ -170,6 +174,8 @@ def create_storyboard_with_autogen(goal, target_audience, product_desc, num_scen
         # Parse voice
         if "SELECTED_VOICE:" in innovator_output:
             ai_selected_voice = innovator_output.split("SELECTED_VOICE:")[1].split("\n")[0].strip()
+            # Strip markdown formatting (**, *, etc.)
+            ai_selected_voice = ai_selected_voice.replace("**", "").replace("*", "").strip()
             if ai_selected_voice in VOICE_LIBRARY:
                 selected_voice = ai_selected_voice
                 print(f"🎙️ AI Selected Voice: {selected_voice} ({VOICE_LIBRARY[selected_voice]})")
@@ -181,6 +187,24 @@ def create_storyboard_with_autogen(goal, target_audience, product_desc, num_scen
 
     # --- STEP 1: Marketing Strategist ---
     print("🤖 Step 1: Marketing Strategist planning narrative...")
+    
+    # Add explainer-specific instructions if goal is "Explainer Video"
+    explainer_instructions = ""
+    if "explainer" in goal.lower():
+        explainer_instructions = """
+        
+**EXPLAINER VIDEO MODE ACTIVATED**:
+This is an EXPLAINER VIDEO, not a product showcase. Follow this structure:
+- **Scene 1 (Hook)**: Start with a QUESTION addressing the pain point ("Are you tired of X?")
+- **Scene 2 (Problem)**: Agitate the problem ("Manual X wastes Y hours per week")
+- **Scene 3 (Solution)**: Introduce the product as the solution ("Meet [Product]. The [category] that [benefit]")
+- **Scene 4-5 (How/Benefits)**: Explain how it works or key benefits
+- **Final Scene (CTA)**: Clear call to action ("Start your free trial today")
+
+Use CONVERSATIONAL, EMPATHETIC language. Address the viewer directly ("You know that feeling when...").
+Focus on BENEFITS, not features. Make it relatable and human.
+"""
+    
     strategist_prompt = f"""You are the Chief Marketing Strategist and Art Director.
 Your goal: Define the Narrative Structure and the Visual Style Guide.
 
@@ -189,6 +213,7 @@ Your goal: Define the Narrative Structure and the Visual Style Guide.
    - Audience: {target_audience}
    - Product: {product_desc}
    - **Creative Concept (MANDATORY)**: {creative_concept} -> The video MUST follow this unique creative direction.
+   {explainer_instructions}
 
 2. **Psychographic Analysis (The "Marketing Brain")**:
    - **Persona**: Who is the viewer? (e.g., "Busy Mom", "Tech Bro", "Fitness Junkie").
@@ -234,12 +259,11 @@ Strategy Plan:
 For each scene, define:
 - **Script**: Voiceover (5-15 words). MUST speak directly to the "Persona" defined above using their "Voice". Address their "Pain Point" or "Desire".
 - **Action**: What happens?
-- **Duration**: MUST be 3, 4, or 5 seconds only.
+- **Duration**: MUST be exactly 2 seconds (User Quota Constraint).
 - **Visual Prompt**: Detailed cinematic description applying the Style Guide. Include:
   * Subject description
-  * Lighting (volumetric, rim light, softbox, etc.)
-  * Camera (lens type like 85mm, movement like slow pan, angle like low angle)
-  * Render style ("Unreal Engine 5", "Octane Render", "8k", "Cinematic", "Photorealistic")
+  * Camera Movement (Use 2D terms if SaaS Explainer: "Slide left", "Pan right", "Zoom in", "Static")
+  * Render style ("Unreal Engine 5", "Octane Render", "8k", "Cinematic", "Photorealistic" OR "Flat Vector", "2D Illustration")
   * **MANDATORY**: Append these keywords to EVERY visual prompt: "{STYLE_PRESETS.get(style_preset, "")}"
 
 **CRITICAL TYPOGRAPHY RULE**:
@@ -252,7 +276,7 @@ Rules:
 - If using an uploaded image, use `visual_type='i2v'` and `asset_query='image_X'`.
 - If generating from scratch, use `visual_type='t2v'` and asset_query with brief description.
 - Scene 1 `start_from_previous_end` MUST be false.
-- Duration MUST be 3, 4, or 5 seconds.
+- Duration MUST be between 2 and 8 seconds.
 
 Output Structure (VALID JSON ONLY):
 {{
@@ -359,9 +383,9 @@ Return ONLY valid JSON matching this structure:
     # Validate and fix duration_s
     for scene in storyboard_json.get('scenes', []):
         duration = scene.get('duration_s', 4)
-        if duration not in [3, 4, 5]:
-            print(f"⚠️ Scene {scene.get('scene')} duration {duration}s invalid. Clamping to 4s.")
-            scene['duration_s'] = 4
+        if duration != 2:
+            print(f"⚠️ Scene {scene.get('scene')} duration {duration}s adjusted to 2s for quota.")
+            scene['duration_s'] = 2
         
         # Auto-fix asset_query naming if needed
         asset_query = scene.get('asset_query', '')
@@ -500,7 +524,7 @@ Suggestions:
 
 Rules:
 - Keep number of scenes the same.
-- Maintain duration_s within [3,4,5].
+- Maintain duration_s within [2, 8].
 - Preserve any image_0 usage for i2v scenes.
 - Strengthen CTA clarity.
 - Ensure each script is <= 8 words and product referenced at least once.
@@ -554,13 +578,15 @@ def refine_storyboard_context(storyboard_json, goal, target_audience, product_de
     
     # Assign phases based on number of scenes
     num_scenes = len(scenes)
-    if num_scenes == 2:
+    if num_scenes == 1:
+        desired_structure = ["showcase"] # Single scene teaser
+    elif num_scenes == 2:
         desired_structure = ["reveal", "cta"]  # For 2 scenes: focus on product + action
     elif num_scenes == 3:
         desired_structure = ["hook", "reveal", "cta"]  # Classic 3-act
     elif num_scenes == 4:
         desired_structure = ["hook", "reveal", "benefit", "cta"]
-    else:  # 5 scenes
+    else:  # 5+ scenes
         desired_structure = ["hook", "reveal", "benefit", "social_proof", "cta"]
     
     for idx, scene in enumerate(scenes):
@@ -693,7 +719,7 @@ def refine_storyboard_context(storyboard_json, goal, target_audience, product_de
         scene['start_from_previous_end'] = i != 0
 
         # Clamp duration defensively
-        if scene.get('duration_s', 4) not in [3, 4, 5]:
+        if not (2 <= scene.get('duration_s', 4) <= 8):
             scene['duration_s'] = 4
         
         # --- Final step: Update script and regenerate kinetic typography ---

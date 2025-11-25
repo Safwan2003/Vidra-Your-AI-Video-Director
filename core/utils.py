@@ -82,7 +82,10 @@ def extract_last_frame(video_path, output_path):
     Returns:
         str: The path to the saved image, or None if failed.
     """
-    from moviepy.editor import VideoFileClip
+    try:
+        from moviepy import VideoFileClip
+    except ImportError:
+        from moviepy.editor import VideoFileClip
     try:
         print(f"🖼️ Extracting last frame from {video_path}...")
         with VideoFileClip(video_path) as clip:
