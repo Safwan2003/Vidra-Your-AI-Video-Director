@@ -1,0 +1,9 @@
+{
+  "name": "Vidra - ",
+  "description": "An AI agent that autonomously turns URLs into high-end isometric SaaS explainer videos using code-based motion graphics.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "display-capture"
+  ]
+}
