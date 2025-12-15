@@ -14,6 +14,8 @@ export interface VideoGenerationState {
     cameraWork?: any;
     visualAssets?: {
         colorPalette: string[];
+        brandColor?: string;
+        accentColor?: string;
         logoUrl?: string;
         fontFamily?: string;
     };

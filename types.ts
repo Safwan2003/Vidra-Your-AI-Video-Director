@@ -141,29 +141,51 @@ export interface VideoScene {
 
 // ---TEMPLATES ---
 
-// Viable Template Schema (6 Scenes)
+// Viable Template Schema (6 Scenes - 90 Seconds)
 export interface ViableTemplateData {
     audioTrack?: string;
-    colors: {
-        background: string;
-        accent: string;
-        secondary: string;
-    };
-    assets: {
+
+    // Brand/Theme (can be extracted from product URL)
+    brand: {
+        name: string;
         logoUrl?: string;
-        screenshotDashboard?: string;
+        accentColor?: string; // Primary brand color (e.g. '#22c55e')
+        tagline?: string;
+    };
+
+    // Visual Assets
+    assets: {
+        screenshotDashboard?: string;  // Main product screenshot
         screenshotMobile?: string;
         screenshotFeature1?: string;
         screenshotFeature2?: string;
     };
+
+    // Copy/Content
     copy: {
-        problem: string;           // Scene 1
-        solutionTooltip: string;   // Scene 3
-        solutionNotification: string; // Scene 3
-        heroTitle: string;         // Scene 3
-        features: { title: string, subtitle: string }[]; // Scene 5
+        headline?: string;        // Scene 2 main headline
+        subheadline?: string;     // Scene 2 subtitle
+        featuresTitle?: string;   // Scene 4 header
+        features?: { title: string; subtitle: string; icon?: string }[];
     };
-    trust?: { logos: string[] }; // Scene 4 (Integrations)
+
+    // Social Proof
+    trust?: {
+        testimonial?: {
+            quote: string;
+            author: string;
+            role: string;
+            company?: string;
+            avatarUrl?: string;
+        };
+        logos?: string[];  // Trust logos (clients, integrations)
+    };
+
+    // CTA
+    cta?: {
+        text?: string;   // CTA button text
+        url?: string;    // Website URL
+    };
 }
 
 // --- PLAN & BRIEF ---

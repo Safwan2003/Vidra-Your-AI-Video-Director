@@ -15,57 +15,102 @@ export const directorAgent = async (state: VideoGenerationState): Promise<VideoG
       // 1. Gather Assets
       const assetsContext = state.brief.recordedClips && state.brief.recordedClips.length > 0
         ? `AVAILABLE SCREENSHOTS:\n${state.brief.recordedClips.map((c, i) => `"${c.url}"`).join('\n')}`
-        : `NO ASSETS provided. Use placeholder URLs.`;
+        : `NO ASSETS provided. Leave screenshot URLs empty.`;
 
-      // 2. Prompt for Template Content
+      // 2. Extract brand colors from Art Director (or defaults)
+      const visualAssets = state.visualAssets;
+      const brandColor = visualAssets?.brandColor || '#9333ea';
+      const accentColor = visualAssets?.accentColor || '#f472b6';
+
+      const industry = detectIndustry(state.brief.description);
+
+      // 3. Prompt for Template Content with NEW schema
       const prompt = `
-            You are filling the "Viable" Video Template for: ${state.brief.productName}.
+            You are an elite Copywriter & Creative Director.
+            Fill the "Viable" Video Template for: ${state.brief.productName}.
+            
+            CONTEXT:
             Description: ${state.brief.description}
+            Target Audience: ${state.brief.targetAudience}
+            Tone: ${state.brief.tone}
+            Industry: ${industry}
             
             ${assetsContext}
 
-            The template has 6 FIXED SCENES (90 Seconds Total - Cinematic Pacing). Fill the schema:
+            The template has 6 SCENES. Generate specific, high-converting copy:
             
-            1. PROBLEM: Punchy hook text.
-            2. RESULT: Stats for the large dashboard card.
-            3. INTEGRATIONS: 4-5 Software names.
-            4. FEATURES: 3 items.
+            1. BRAND INFO: Company name, tagline
+            2. HEADLINE: Punchy hook for the hero scene.
+            3. FEATURES: 6 specific features containing 1-2 word titles and short subtitles.
+            4. TRUST: A realistic testimonial relevant to ${industry}.
+            5. CTA: Strong action verb.
 
-            OUTPUT JSON SCHEMA:
+            OUTPUT JSON SCHEMA (use exactly this structure):
             {
+                "brand": {
+                    "name": "${state.brief.productName}",
+                    "accentColor": "${brandColor}",
+                    "secondaryColor": "${accentColor}",
+                    "tagline": "SHORT TAGLINE - 5 words max"
+                },
                 "assets": {
-                    "screenshotDashboard": "url"
+                    "screenshotDashboard": "${state.brief.recordedClips?.[0]?.url || ''}"
                 },
                 "copy": {
-                    "problem": "HOOK TEXT",
-                    "solutionTooltip": "STAT",
-                    "solutionNotification": "ALERT",
-                    "heroTitle": "TITLE",
-                    "features": [ { "title": "T1", "subtitle": "S1" } ]
+                    "headline": "MAIN HEADLINE - 6-8 words that hook the viewer",
+                    "subheadline": "SHORT SUBTITLE - 4-5 words",
+                    "featuresTitle": "Why ${state.brief.productName}?",
+                    "features": [
+                        { "title": "Feature 1", "subtitle": "One line description", "icon": "🚀" },
+                        { "title": "Feature 2", "subtitle": "One line description", "icon": "⚡" },
+                        { "title": "Feature 3", "subtitle": "One line description", "icon": "🔗" },
+                        { "title": "Feature 4", "subtitle": "One line description", "icon": "🔒" },
+                        { "title": "Feature 5", "subtitle": "One line description", "icon": "👥" },
+                        { "title": "Feature 6", "subtitle": "One line description", "icon": "📊" }
+                    ]
                 },
-                "trust": { "logos": ["A", "B", "C", "D"] },
-                "colors": { "background": "#0f172a", "accent": "#7c3aed", "secondary": "#fb923c" }
+                "trust": {
+                    "testimonial": {
+                        "quote": "A compelling customer testimonial quote - 20-30 words",
+                        "author": "Customer Name",
+                        "role": "Job Title",
+                        "company": "Company Name"
+                    },
+                    "logos": []
+                },
+                "cta": {
+                    "text": "${state.brief.callToAction || 'Get Started'}",
+                    "url": "www.example.com"
+                }
             }
+            
+            CRITICAL: Return ONLY valid JSON, no explanations.
         `;
 
       const completion = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.5,
+        temperature: 0.6,
       });
 
       const raw = completion.choices[0]?.message?.content || '{}';
       const templateData = JSON.parse(cleanJsonOutput(raw)) as ViableTemplateData;
 
-      // 3. Construct Dummy Scenes for Duration (Match ViableTemplate.tsx T constants)
+      // Force inject the colors to match Art Director selection
+      if (templateData.brand) {
+        templateData.brand.accentColor = brandColor;
+        // Note: ViableTemplateData might need 'secondaryColor' in its type definition if used in scenes
+      }
+
+      // 4. Construct Dummy Scenes for Duration (Match ViableTemplate.tsx T constants)
       // 450 + 300 + 750 + 450 + 450 + 300 = 2700 frames (90s)
       const scenes: VideoScene[] = [
-        { id: 1, type: 'slot_transition', title: 'Problem', duration: 15 },
-        { id: 2, type: 'slot_transition', title: 'Mechanism', duration: 10 },
-        { id: 3, type: 'slot_transition', title: 'Result', duration: 25 },
-        { id: 4, type: 'slot_transition', title: 'Integrations', duration: 15 },
-        { id: 5, type: 'slot_transition', title: 'Features', duration: 15 },
-        { id: 6, type: 'slot_transition', title: 'Outro', duration: 10 },
+        { id: 1, type: 'slot_transition', title: 'Logo Intro', duration: 15 },
+        { id: 2, type: 'slot_transition', title: 'Tagline', duration: 10 },
+        { id: 3, type: 'slot_transition', title: 'Dashboard', duration: 25 },
+        { id: 4, type: 'slot_transition', title: 'Features', duration: 15 },
+        { id: 5, type: 'slot_transition', title: 'Testimonials', duration: 15 },
+        { id: 6, type: 'slot_transition', title: 'CTA', duration: 10 },
       ];
 
       return {

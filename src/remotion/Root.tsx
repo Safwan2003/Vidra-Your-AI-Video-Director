@@ -46,22 +46,40 @@ export const RemotionRoot: React.FC = () => {
                 width={1920}
                 height={1080}
                 defaultProps={{
-                    colors: { background: '#0f172a', accent: '#7c3aed', secondary: '#fb923c' },
+                    brand: {
+                        name: 'viable',
+                        accentColor: '#22c55e',
+                        tagline: 'AI-Powered Customer Insights'
+                    },
                     assets: {
-                        screenshotDashboard: '/dashboard.jpg',
-                        isMobile: false
+                        screenshotDashboard: ''
                     },
                     copy: {
-                        problem: "CHAOS. NOISE. DATA OVERLOAD.",
-                        solutionTooltip: "Revenue: +127%",
-                        solutionNotification: "User Experience Optimized",
-                        heroTitle: "The Solution",
+                        headline: 'Transform Your Feedback Into Action',
+                        subheadline: 'Powered by Advanced AI',
+                        featuresTitle: 'Everything You Need',
                         features: [
-                            { title: "Smart Analysis", subtitle: "AI-driven insights" },
-                            { title: "Real-time", subtitle: "Instant updates" }
+                            { title: 'Smart Analysis', subtitle: 'AI-powered insights from your customer feedback', icon: '🧠' },
+                            { title: 'Real-time Sync', subtitle: 'Instant updates across all your platforms', icon: '⚡' },
+                            { title: 'Deep Integration', subtitle: 'Connect with 100+ popular tools seamlessly', icon: '🔗' },
+                            { title: 'Secure & Private', subtitle: 'Enterprise-grade security for your data', icon: '🔒' },
+                            { title: 'Team Collaboration', subtitle: 'Work together in real-time with your team', icon: '👥' },
+                            { title: 'Custom Reports', subtitle: 'Generate beautiful reports in seconds', icon: '📊' }
                         ]
                     },
-                    trust: { logos: [] }
+                    trust: {
+                        testimonial: {
+                            quote: 'This product transformed how we understand our customers. We cut analysis time by 90%.',
+                            author: 'Sarah Johnson',
+                            role: 'VP of Product',
+                            company: 'TechCorp'
+                        },
+                        logos: []
+                    },
+                    cta: {
+                        text: 'Get Started Today',
+                        url: 'www.viable.com'
+                    }
                 } as any}
             />
         </>

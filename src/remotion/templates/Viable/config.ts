@@ -1,88 +1,89 @@
 // src/remotion/templates/Viable/config.ts
-// Modular Template Configuration
-// This allows swapping intro/outro and customizing slot order
+// Modular Template Configuration - 90 Second Video (6 Scenes)
 
 export interface TemplateSlotConfig {
     id: string;
-    component: string; // Component name
-    duration: number; // Duration in frames (30fps)
-    enabled: boolean; // Can be toggled on/off
+    component: string;
+    durationSeconds: number;
+    durationFrames: number; // At 30fps
+    enabled: boolean;
 }
 
 export interface ViableTemplateConfig {
-    intro?: TemplateSlotConfig;
-    slots: TemplateSlotConfig[];
-    outro?: TemplateSlotConfig;
+    totalDuration: number; // Total frames
+    fps: number;
+    scenes: TemplateSlotConfig[];
 }
 
-// Default Viable Template Configuration
+// Default Viable Template Configuration - 90 Seconds at 30fps = 2700 frames
 export const DEFAULT_VIABLE_CONFIG: ViableTemplateConfig = {
-    // Optional intro (can be swapped)
-    intro: {
-        id: 'brand_intro',
-        component: 'BrandIntro',
-        duration: 60, // 2 seconds
-        enabled: false // Disabled by default
-    },
-
-    // Core slots (order can be changed)
-    slots: [
+    totalDuration: 2700,
+    fps: 30,
+    scenes: [
         {
-            id: 'problem',
+            id: 'intro',
             component: 'Slot1Problem',
-            duration: 100, // ~3.3s
+            durationSeconds: 15,
+            durationFrames: 450,
             enabled: true
         },
         {
-            id: 'transition',
+            id: 'tagline',
             component: 'Slot2Transition',
-            duration: 40, // ~1.3s
+            durationSeconds: 10,
+            durationFrames: 300,
             enabled: true
         },
         {
-            id: 'hero',
+            id: 'dashboard',
             component: 'Slot3Hero',
-            duration: 300, // 10s
+            durationSeconds: 25,
+            durationFrames: 750,
             enabled: true
         },
         {
             id: 'features',
             component: 'Slot4Features',
-            duration: 150, // 5s
+            durationSeconds: 15,
+            durationFrames: 450,
             enabled: true
         },
         {
-            id: 'trust',
+            id: 'testimonials',
             component: 'Slot5Trust',
-            duration: 120, // 4s
+            durationSeconds: 15,
+            durationFrames: 450,
+            enabled: true
+        },
+        {
+            id: 'cta',
+            component: 'Slot6Outro',
+            durationSeconds: 10,
+            durationFrames: 300,
             enabled: true
         }
-    ],
-
-    // Optional outro (can be swapped)
-    outro: {
-        id: 'cta',
-        component: 'CTAOutro',
-        duration: 90, // 3 seconds
-        enabled: false // Disabled by default
-    }
-};
-
-// Alternative configurations for different use cases
-export const VIABLE_CONFIG_SHORT: ViableTemplateConfig = {
-    slots: [
-        { id: 'problem', component: 'Slot1Problem', duration: 60, enabled: true },
-        { id: 'hero', component: 'Slot3Hero', duration: 180, enabled: true },
-        { id: 'features', component: 'Slot4Features', duration: 120, enabled: true }
     ]
 };
 
-export const VIABLE_CONFIG_WITH_CTA: ViableTemplateConfig = {
-    ...DEFAULT_VIABLE_CONFIG,
-    outro: {
-        id: 'cta',
-        component: 'CTAOutro',
-        duration: 90,
-        enabled: true
-    }
+// Short version - 45 seconds
+export const VIABLE_CONFIG_SHORT: ViableTemplateConfig = {
+    totalDuration: 1350,
+    fps: 30,
+    scenes: [
+        { id: 'intro', component: 'Slot1Problem', durationSeconds: 8, durationFrames: 240, enabled: true },
+        { id: 'tagline', component: 'Slot2Transition', durationSeconds: 5, durationFrames: 150, enabled: true },
+        { id: 'dashboard', component: 'Slot3Hero', durationSeconds: 15, durationFrames: 450, enabled: true },
+        { id: 'features', component: 'Slot4Features', durationSeconds: 10, durationFrames: 300, enabled: true },
+        { id: 'cta', component: 'Slot6Outro', durationSeconds: 7, durationFrames: 210, enabled: true }
+    ]
+};
+
+// Calculate start frame for each scene
+export const getSceneTimings = (config: ViableTemplateConfig) => {
+    let currentFrame = 0;
+    return config.scenes.filter(s => s.enabled).map(scene => {
+        const timing = { ...scene, startFrame: currentFrame };
+        currentFrame += scene.durationFrames;
+        return timing;
+    });
 };
