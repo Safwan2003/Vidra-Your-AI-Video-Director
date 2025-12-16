@@ -188,12 +188,37 @@ export interface ViableTemplateData {
     };
 }
 
+// Pretaa Template Schema (5 Scenes - Isometric Tech Style)
+export interface PretaaTemplateData {
+    brand: {
+        name: string;
+        logoUrl?: string;
+        accentColor?: string;
+        tagline?: string;
+    };
+    copy: {
+        headline?: string;
+        subheadline?: string;
+        problem?: string;
+        solution?: string;
+        features?: { title: string; subtitle: string; icon?: string }[];
+    };
+    cta?: {
+        text?: string;
+        url?: string;
+    };
+    assets?: {
+        productImage?: string;
+        screenshot?: string;
+    };
+}
+
 // --- PLAN & BRIEF ---
 export interface VideoPlan {
     brandName: string;
     brandColor: string;
-    template?: 'generic' | 'viable'; // Select implementation
-    templateData?: ViableTemplateData; // Data for the specific template
+    template?: 'generic' | 'viable' | 'pretaa'; // Select implementation
+    templateData?: ViableTemplateData | PretaaTemplateData; // Data for the specific template
     archetype?: string;
     narrativeFramework?: string;
     scenes: VideoScene[]; // Generic scenes (used if template='generic')

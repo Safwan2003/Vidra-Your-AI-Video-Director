@@ -3,8 +3,9 @@ import { Composition } from 'remotion';
 import { MainVideo } from './compositions/MainVideo';
 import type { VideoPlan } from '../../types';
 
-import { Test3DScene } from './3d/Test3DScene';
+
 import { ViableTemplate } from './templates/Viable';
+import { PretaaReactTemplate } from './templates/Pretaa';
 
 export const RemotionRoot: React.FC = () => {
     return (
@@ -30,18 +31,11 @@ export const RemotionRoot: React.FC = () => {
                     };
                 }}
             />
-            <Composition
-                id="Test3D"
-                component={Test3DScene}
-                durationInFrames={300}
-                fps={30}
-                width={1920}
-                height={1080}
-            />
+
             <Composition
                 id="ViableTemplate"
                 component={ViableTemplate}
-                durationInFrames={2700} // 90 Seconds (15+10+25+15+15+10)
+                durationInFrames={2370} // 79 Seconds (1m 19s)
                 fps={30}
                 width={1920}
                 height={1080}
@@ -79,6 +73,35 @@ export const RemotionRoot: React.FC = () => {
                     cta: {
                         text: 'Get Started Today',
                         url: 'www.viable.com'
+                    }
+                } as any}
+            />
+            <Composition
+                id="PretaaTemplate"
+                component={PretaaReactTemplate}
+                durationInFrames={1800} // 60 seconds (9 scenes)
+                fps={30}
+                width={1920}
+                height={1080}
+                defaultProps={{
+                    brand: {
+                        name: 'TechCorp',
+                        accentColor: '#3b82f6',
+                        tagline: 'Innovation in Motion'
+                    },
+                    copy: {
+                        headline: 'The Future is Here',
+                        subheadline: 'Introducing AI-Powered Solutions',
+                        problem: 'Traditional tools are slow and complex',
+                        solution: 'Our platform automates everything',
+                        features: [
+                            { title: 'Fast', subtitle: '10x faster processing', icon: '⚡' },
+                            { title: 'Smart', subtitle: 'AI-powered insights', icon: '🧠' },
+                            { title: 'Secure', subtitle: 'Enterprise-grade security', icon: '🔒' }
+                        ]
+                    },
+                    cta: {
+                        text: 'Get Started Today'
                     }
                 } as any}
             />

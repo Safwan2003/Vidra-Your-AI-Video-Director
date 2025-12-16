@@ -140,8 +140,9 @@ export default function App() {
             }, 3000);
 
             // Use new multi-agent system
-            // Always use Viable template
-            const generatedPlan = await generateVideoPlanWithAgents(brief, 'viable');
+            // Always use selected template (defaulting to viable if unsure, but logic handles pretaa)
+            const templateKey = selectedTemplate.toLowerCase().includes('pretaa') ? 'pretaa' : 'viable';
+            const generatedPlan = await generateVideoPlanWithAgents(brief, templateKey);
 
             clearInterval(progressInterval);
             addLog('✅ Multi-Agent generation complete!', 'success');
@@ -484,26 +485,52 @@ export default function App() {
                                 <p className="text-slate-400">Agency-quality video template for {brief?.productName}</p>
                             </div>
 
-                            <div className="max-w-2xl w-full">
-                                <div className="cursor-pointer relative overflow-hidden rounded-2xl border-2 p-8 transition-all duration-300 border-indigo-500 shadow-xl shadow-indigo-500/20 bg-slate-800">
-                                    <div className="mb-6 flex justify-center">
-                                        <Zap className="text-red-500" size={48} />
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-white mb-3 text-center">Viable (Agency)</h3>
-                                    <p className="text-sm text-slate-400 mb-6 text-center leading-relaxed">
-                                        Strict 5-slot structure matching "What a Story" Agency quality. Premium 3D & Claymorphism with modular intro/outro system.
-                                    </p>
+                            <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl">
+                                {[
+                                    {
+                                        id: 'viable',
+                                        name: 'Viable (Agency)',
+                                        desc: 'Strict 5-slot structure matching "What a Story" Agency quality. Premium 3D & Claymorphism.',
+                                        tags: ['Agency Quality', '3D', 'Modular'],
+                                        color: 'indigo'
+                                    },
+                                    {
+                                        id: 'pretaa',
+                                        name: 'Pretaa (Isometric)',
+                                        desc: 'Stop-motion style isometric animation sequence. Perfect for tech explainers.',
+                                        tags: ['Isometric', 'Stop Motion', 'Tech'],
+                                        color: 'emerald'
+                                    }
+                                ].map(template => (
+                                    <div
+                                        key={template.id}
+                                        onClick={() => setSelectedTemplate(template.name)}
+                                        className={`cursor-pointer relative overflow-hidden rounded-2xl border-2 p-8 transition-all duration-300 shadow-xl bg-slate-800 ${selectedTemplate.toLowerCase().includes(template.id)
+                                            ? `border-${template.color}-500 shadow-${template.color}-500/20 scale-[1.02]`
+                                            : 'border-slate-700 hover:border-slate-600 opacity-80 hover:opacity-100'
+                                            }`}
+                                    >
+                                        <div className="mb-6 flex justify-center">
+                                            <Zap className={`text-${template.color}-500`} size={48} />
+                                        </div>
+                                        <h3 className="text-2xl font-bold text-white mb-3 text-center">{template.name}</h3>
+                                        <p className="text-sm text-slate-400 mb-6 text-center leading-relaxed">
+                                            {template.desc}
+                                        </p>
 
-                                    <div className="flex flex-wrap gap-2 justify-center">
-                                        {['Agency Quality', 'Clay 3D', 'Fixed Structure', 'Modular Slots'].map(f => (
-                                            <span key={f} className="text-[10px] uppercase font-bold bg-slate-900 px-3 py-1.5 rounded text-slate-400">
-                                                {f}
-                                            </span>
-                                        ))}
-                                    </div>
+                                        <div className="flex flex-wrap gap-2 justify-center">
+                                            {template.tags.map(f => (
+                                                <span key={f} className="text-[10px] uppercase font-bold bg-slate-900 px-3 py-1.5 rounded text-slate-400">
+                                                    {f}
+                                                </span>
+                                            ))}
+                                        </div>
 
-                                    <div className="absolute top-4 right-4 w-4 h-4 rounded-full bg-indigo-500 ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-500/50" />
-                                </div>
+                                        {selectedTemplate.toLowerCase().includes(template.id) && (
+                                            <div className={`absolute top-4 right-4 w-4 h-4 rounded-full bg-${template.color}-500 ring-4 ring-${template.color}-500/30 shadow-lg shadow-${template.color}-500/50`} />
+                                        )}
+                                    </div>
+                                ))}
                             </div>
 
                             <Button
