@@ -285,6 +285,39 @@ app.get('/api/render/download/:filename', async (req, res) => {
     }
 });
 
+// ========================================
+// WEBSITE SCRAPING ENDPOINT
+// ========================================
+app.get('/api/scrape', async (req, res) => {
+    try {
+        const { url } = req.query;
+        if (!url) {
+            return res.status(400).json({ error: 'URL parameter is required' });
+        }
+
+        console.log(`🔍 Scraping: ${url}`);
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const html = await response.text();
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    } catch (error) {
+        console.error('❌ Scraping error:', error.message);
+        res.status(500).json({ error: 'Failed to scrape', details: error.message });
+    }
+});
+
+// ========================================
+// START SERVER
+// ========================================
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log('');
@@ -296,6 +329,7 @@ app.listen(PORT, () => {
     console.log(`   POST /api/wanx/generate - Generate video`);
     console.log(`   GET  /api/wanx/status/:taskId - Check status`);
     console.log(`   POST /api/render - Export/Render MP4`);
+    console.log(`   GET  /api/scrape?url=<website> - Scrape website`);
     console.log('');
     console.log('✅ Ready to accept requests from React app!');
     console.log('💡 Keep this terminal open while using Vidra');

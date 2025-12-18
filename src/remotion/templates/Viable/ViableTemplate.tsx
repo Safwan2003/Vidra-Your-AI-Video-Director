@@ -1,10 +1,11 @@
 import React from 'react';
 import { AbsoluteFill } from 'remotion';
-import { TransitionSeries, springTiming, linearTiming } from '@remotion/transitions';
+import { TransitionSeries, springTiming } from '@remotion/transitions';
 import { slide } from '@remotion/transitions/slide';
 import { wipe } from '@remotion/transitions/wipe';
 import { fade } from '@remotion/transitions/fade';
-import { ViableTemplateData } from '../../../types';
+import { VideoPlan, VideoScene } from '../../../../types';
+import { AudioHandler } from '../../components/AudioHandler';
 
 // Import Scenes
 import { Slot1Problem } from './scenes/Slot_1_Problem';
@@ -14,171 +15,126 @@ import { Slot4Features } from './scenes/Slot_4_Features';
 import { Slot5Trust } from './scenes/Slot_5_Trust';
 import { Slot6Outro } from './scenes/Slot_6_Outro';
 
-// Scene Durations (frames at 30fps) - Tuned for pacing
-const T = {
-    SCENE_1: 450, // 15s - Problem/Chaos
-    SCENE_2: 300, // 10s - Solution Intro
-    SCENE_3: 600, // 20s - Product Showcase (Tightened)
-    SCENE_4: 450, // 15s - Data Flow
-    SCENE_5: 450, // 15s - Feedback Cloud
-    SCENE_6: 300, // 10s - Outro
+// Scene Renderer
+const SceneRenderer = ({ scene, brand }: { scene: VideoScene, brand: any }) => {
+    switch (scene.id) {
+        // 1. PROBLEM
+        case 1:
+            return <Slot1Problem
+                brandName={brand.name}
+                accentColor={brand.accentColor}
+                tagline={scene.subText || "The old way is broken."}
+            // Assuming Slot1 accepts a main problem text prop, if not we'll allow it to use default or update logic
+            // For now, passing brand info which it definitely takes.
+            />;
+
+        // 2. TRANSITION / INTRO
+        case 2:
+            return <Slot2Transition
+                headline={scene.mainText || "There is a better way."}
+                subheadline={scene.subText || "Introducing the future."}
+                accentColor={brand.accentColor}
+            />;
+
+        // 3. HERO / DASHBOARD
+        case 3:
+            return <Slot3Hero
+                screenUrl={scene.screenshotUrl}
+                title={scene.mainText}
+                productName={brand.name}
+                accentColor={brand.accentColor}
+            />;
+
+        // 4. FEATURES
+        case 4:
+            // Convert bentoItems to features prop
+            const features = scene.bentoItems?.map(item => ({
+                title: item.title || 'Feature',
+                subtitle: item.content || 'Description',
+                icon: 'star'
+            })) || [];
+
+            return <Slot4Features
+                features={features}
+                sectionTitle={scene.mainText || "Powerful Features"}
+                accentColor={brand.accentColor}
+            />;
+
+        // 5. TRUST / SOCIAL PROOF
+        case 5:
+            // Convert mainText/subText to feedback items
+            const feedbacks = scene.mainText ? [
+                { text: scene.mainText, urgency: 'Low' as const, icon: '⭐' },
+                { text: scene.subText || "Great service!", urgency: 'High' as const, icon: '🚀' }
+            ] : [];
+
+            return <Slot5Trust
+                feedbacks={feedbacks}
+                accentColor={brand.accentColor}
+            />;
+
+        // 6. OUTRO
+        case 6:
+            return <Slot6Outro
+                brandName={brand.name}
+                ctaText={scene.ctaText || scene.mainText || "Get Started"}
+                ctaUrl={scene.domain || "viable.com"}
+                accentColor={brand.accentColor}
+            />;
+
+        default:
+            return <AbsoluteFill style={{ background: 'red' }}>Unknown Scene {scene.id}</AbsoluteFill>
+    }
 };
 
-// Props interface
-interface ViableTemplateProps extends Partial<ViableTemplateData> {
-    colors?: { background: string; accent: string; secondary: string };
-    assets?: { screenshotDashboard?: string };
-    copy?: {
-        problem?: string;
-        solutionTooltip?: string;
-        features?: { title: string; subtitle: string; icon?: string }[];
-        headline?: string;
-        subheadline?: string;
-        featuresTitle?: string;
-    };
-    trust?: {
-        logos?: string[];
-        testimonial?: { quote: string; author: string; role: string; company?: string; avatarUrl?: string };
-    };
-    cta?: { text?: string; url?: string };
-    brand?: { name?: string; logoUrl?: string; accentColor?: string; tagline?: string };
+interface ViableReactTemplateProps {
+    plan: VideoPlan;
 }
 
-export const ViableTemplate: React.FC<ViableTemplateProps> = (props) => {
-    // Extract brand info
-    const brandName = props.brand?.name || '';
-    const logoUrl = props.brand?.logoUrl || props.assets?.logoUrl;
-    const accentColor = props.brand?.accentColor || props.colors?.accent || '#9333ea'; // Deep Purple default
-    const tagline = props.brand?.tagline || '';
+export const ViableTemplate: React.FC<ViableReactTemplateProps> = ({ plan }) => {
+    // Defaults
+    const brand = {
+        name: plan?.brandName || 'Viable',
+        accentColor: plan?.brandColor || '#9333ea',
+    };
 
-    // Extract copy
-    const headline = props.copy?.headline || '';
-    const subheadline = props.copy?.subheadline || '';
-    const featuresTitle = props.copy?.featuresTitle || '';
-    const features = props.copy?.features || [];
+    const scenes = plan?.scenes || [];
 
-    // Extract assets
-    const screenUrl = props.assets?.screenshotDashboard;
-
-    // Extract trust 
-    const testimonial = props.trust?.testimonial;
-    const logos = props.trust?.logos || [];
-
-    // Extract CTA
-    const ctaText = props.cta?.text || '';
-    const ctaUrl = props.cta?.url || '';
-
-    // --- PREMIUM TRANSITION CONFIGS ---
-
-    // 1. Snappy Material Design Spring
-    const stiffSpring = springTiming({
-        config: { damping: 200, stiffness: 200, mass: 1 },
-        durationInFrames: 35, // ~1.2s smooth
-    });
-
-    // 2. Bouncy/Playful Spring
-    const bounceSpring = springTiming({
-        config: { damping: 15, stiffness: 120, mass: 0.8 },
-        durationInFrames: 40,
-    });
+    // Fallback if no plan (Dev mode)
+    const effectiveScenes = scenes.length > 0 ? scenes : [
+        { id: 1, duration: 5, type: 'kinetic_typo', title: 'Problem' },
+        { id: 2, duration: 4, type: 'slot_transition', title: 'Solution' },
+        { id: 3, duration: 6, type: 'device_showcase', title: 'Hero' },
+        { id: 4, duration: 6, type: 'bento_grid', title: 'Features' },
+        { id: 5, duration: 5, type: 'social_proof', title: 'Trust' },
+        { id: 6, duration: 5, type: 'cta_finale', title: 'Outro' }
+    ] as VideoScene[];
 
     // Transitions
-    const panUp = slide({ direction: 'from-bottom' });
+    const stiffSpring = springTiming({ config: { damping: 200, stiffness: 200, mass: 1 }, durationInFrames: 35 });
     const panLeft = slide({ direction: 'from-right' });
-    const wipeIn = wipe({ direction: 'from-right' });
-    const crossFade = fade();
+    const panUp = slide({ direction: 'from-bottom' });
 
     return (
         <AbsoluteFill style={{ background: '#071a14' }}>
+            <AudioHandler scenes={effectiveScenes} audioTrack={null} />
+
             <TransitionSeries>
+                {effectiveScenes.map((scene, index) => (
+                    <React.Fragment key={scene.id || index}>
+                        <TransitionSeries.Sequence durationInFrames={Math.floor((scene.duration || 5) * 30)}>
+                            <SceneRenderer scene={scene} brand={brand} />
+                        </TransitionSeries.Sequence>
 
-                {/* 1. REALITY: Problem/Chaos */}
-                <TransitionSeries.Sequence durationInFrames={T.SCENE_1}>
-                    <Slot1Problem
-                        brandName={brandName}
-                        logoUrl={logoUrl}
-                        tagline={tagline}
-                        accentColor={accentColor}
-                    />
-                </TransitionSeries.Sequence>
-
-                {/* T1: Slide Up - implies "Rising above" the chaos to the solution */}
-                <TransitionSeries.Transition
-                    presentation={panUp}
-                    timing={stiffSpring}
-                />
-
-                {/* 2. SOLUTION: AI Tech Intro */}
-                <TransitionSeries.Sequence durationInFrames={T.SCENE_2}>
-                    <Slot2Transition
-                        headline={headline}
-                        subheadline={subheadline}
-                        accentColor={accentColor}
-                    />
-                </TransitionSeries.Sequence>
-
-                {/* T2: Wipe/Slide Left - "Next Chapter" feel, moving into the product */}
-                <TransitionSeries.Transition
-                    presentation={panLeft}
-                    timing={stiffSpring}
-                />
-
-                {/* 3. PRODUCT: Dashboard Showcase */}
-                <TransitionSeries.Sequence durationInFrames={T.SCENE_3}>
-                    <Slot3Hero
-                        screenUrl={screenUrl}
-                        productName={brandName}
-                        accentColor={accentColor}
-                    />
-                </TransitionSeries.Sequence>
-
-                {/* T3: Pan Left - Continuing the lateral journey through data */}
-                <TransitionSeries.Transition
-                    presentation={panLeft}
-                    timing={stiffSpring}
-                />
-
-                {/* 4. MECHANISM: Data Inputs (Flow) */}
-                <TransitionSeries.Sequence durationInFrames={T.SCENE_4}>
-                    <Slot4Features
-                        features={features}
-                        sectionTitle={featuresTitle}
-                        accentColor={accentColor}
-                    />
-                </TransitionSeries.Sequence>
-
-                {/* T4: Pan Left - Smooth flow into details */}
-                <TransitionSeries.Transition
-                    presentation={panLeft}
-                    timing={stiffSpring}
-                />
-
-                {/* 5. DEEP DIVE: Feedback Cloud */}
-                <TransitionSeries.Sequence durationInFrames={T.SCENE_5}>
-                    <Slot5Trust
-                        testimonial={testimonial}
-                        logos={logos}
-                        accentColor={accentColor}
-                    />
-                </TransitionSeries.Sequence>
-
-                {/* T5: Wipe - A clean sweep to clear the complexity for the simple CTA */}
-                <TransitionSeries.Transition
-                    presentation={wipeIn}
-                    timing={stiffSpring}
-                />
-
-                {/* 6. RESOLUTION: Brand Outro */}
-                <TransitionSeries.Sequence durationInFrames={T.SCENE_6}>
-                    <Slot6Outro
-                        brandName={brandName}
-                        logoUrl={logoUrl}
-                        ctaText={ctaText}
-                        ctaUrl={ctaUrl}
-                        accentColor={accentColor}
-                    />
-                </TransitionSeries.Sequence>
-
+                        {/* Transitions between scenes */}
+                        {index < effectiveScenes.length - 1 && (
+                            <TransitionSeries.Transition
+                                presentation={index === 0 ? panUp : panLeft}
+                                timing={stiffSpring}
+                            />
+                        )}
+                    </React.Fragment>
+                ))}
             </TransitionSeries>
         </AbsoluteFill>
     );

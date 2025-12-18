@@ -147,7 +147,7 @@ const GlassMoney = ({ delay }: any) => {
     );
 };
 
-export const PretaaSlot2Problem = () => {
+export const PretaaSlot2Problem = ({ title, subText }: { title?: string, subText?: string }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
 
@@ -191,8 +191,16 @@ export const PretaaSlot2Problem = () => {
                     letterSpacing: '-2px',
                     textShadow: '0 10px 30px rgba(0,0,0,0.1)'
                 }}>
-                    Wasting Resources?
+                    {title || "Wasting Resources?"}
                 </h2>
+                {subText && (
+                    <p style={{
+                        fontSize: 32, color: '#64748b', margin: '10px 0 0', fontWeight: 500,
+                        letterSpacing: '-0.5px'
+                    }}>
+                        {subText}
+                    </p>
+                )}
             </div>
         </AbsoluteFill>
     );

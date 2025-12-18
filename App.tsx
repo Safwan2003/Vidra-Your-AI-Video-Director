@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { refineSceneSvg } from './services/visual';
-import { generateVideoPlanWithAgents } from './services/agents/graph';
+import { VideoFactory } from './services/videoFactory';
 import { generateSceneVideo, generateVoiceover } from './services/wanxService';
 import { AppState, VideoPlan, LogMessage, ProjectBrief } from './types';
 
@@ -10,12 +10,9 @@ import { SceneCard } from './components/SceneCard';
 import { InputWizard } from './components/InputWizard';
 import { Player as RemotionPlayer } from '@remotion/player';
 import { MainVideo } from './src/remotion/compositions/MainVideo';
-import { PlanEditor } from './components/PlanEditor';
+import { ContentEditor } from './components/ContentEditor';
 import { dbService, SavedProject } from './services/dbService';
-import { Edit, Save } from 'lucide-react';
-
-// Icons
-import { RefreshCw, Download, Wand2, ArrowRight, Zap, MonitorPlay, Presentation, Upload, ImagePlus } from 'lucide-react';
+import { Edit, Save, RefreshCw, Download, Wand2, ArrowRight, Zap, MonitorPlay, Presentation, Upload, ImagePlus, Sparkles } from 'lucide-react';
 
 const INITIAL_LOGS: LogMessage[] = [
     { id: '1', text: 'Vidra Agent v2.5 initialized...', type: 'info' },
@@ -123,29 +120,14 @@ export default function App() {
         if (!brief) return;
         setState(AppState.GENERATING);
         addLog(`Template: ${selectedTemplate}`, 'info');
-        addLog('🚀 Initializing Multi-Agent System...', 'process');
+        addLog('🚀 Initializing Video Factory...', 'process');
 
         try {
-            // Simulation of sub-tasks to prevent "hanging" feeling
-            const progressInterval = setInterval(() => {
-                const msgs = [
-                    '🧠 Director Agent: Orchestrating scene flow...',
-                    '📝 Scriptwriter Agent: Drafting hook and problem/solution...',
-                    '🎨 Art Director: Selecting color palettes...',
-                    '🔍 Reviewing user assets and media...',
-                    '✨ Polishing transitions and effects...'
-                ];
-                const randomMsg = msgs[Math.floor(Math.random() * msgs.length)];
-                addLog(randomMsg, 'info');
-            }, 3000);
-
-            // Use new multi-agent system
-            // Always use selected template (defaulting to viable if unsure, but logic handles pretaa)
+            // Factory Mode
             const templateKey = selectedTemplate.toLowerCase().includes('pretaa') ? 'pretaa' : 'viable';
-            const generatedPlan = await generateVideoPlanWithAgents(brief, templateKey);
+            const generatedPlan = await VideoFactory.generate(brief, templateKey);
 
-            clearInterval(progressInterval);
-            addLog('✅ Multi-Agent generation complete!', 'success');
+            addLog('✅ Video Plan Created!', 'success');
 
             // Post-process: Inject recorded clips if the plan requests them
             if (brief.recordedClips.length > 0) {
@@ -566,26 +548,19 @@ export default function App() {
                                 <main className={`flex-1 transition-all duration-300 flex flex-col overflow-y-auto p-4 md:p-8 ${isEditing ? 'mr-[400px]' : ''}`}>
                                     <div className="max-w-7xl mx-auto w-full space-y-6 animate-fade-in relative z-10">
 
-                                        {/* Header */}
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <h2 className="text-2xl font-bold text-white">{plan.brandName || 'Project Preview'}</h2>
                                                 <p className="text-slate-400">{plan.scenes.length} Scenes • {appSettings.model}</p>
-                                                {isEditing && (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-900/50 text-red-200 mt-2 border border-red-800 animate-pulse">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5" />
-                                                        Live Director Mode
-                                                    </span>
-                                                )}
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <Button
-                                                    variant={isEditing ? 'primary' : 'secondary'}
-                                                    onClick={() => setIsEditing(!isEditing)}
-                                                    icon={<Edit size={16} />}
-                                                    className={`${isEditing ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/25' : 'bg-slate-800 text-white border-slate-700'}`}
+                                                    variant="primary"
+                                                    onClick={() => setIsEditing(true)}
+                                                    icon={<Sparkles size={16} />}
+                                                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 border-none"
                                                 >
-                                                    {isEditing ? 'Close Director' : 'Director Mode'}
+                                                    Open Director Studio
                                                 </Button>
 
                                                 <Button
@@ -593,7 +568,7 @@ export default function App() {
                                                     onClick={handleGenerateBackground}
                                                     disabled={isRegenerating}
                                                     icon={<ImagePlus size={16} />}
-                                                    className="hidden md:flex"
+                                                    className="hidden md:flex bg-slate-800 border-slate-700 hover:bg-slate-700"
                                                 >
                                                     {isRegenerating ? 'Generating...' : 'Regen BG'}
                                                 </Button>
@@ -602,8 +577,9 @@ export default function App() {
                                                     onClick={handleExport}
                                                     icon={<Download size={16} />}
                                                     disabled={isRegenerating}
+                                                    className="bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-lg shadow-emerald-500/20"
                                                 >
-                                                    Export
+                                                    Export Video
                                                 </Button>
                                             </div>
                                         </div>
@@ -613,6 +589,7 @@ export default function App() {
                                                 {/* Main Remotion Player */}
                                                 <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-2xl ring-1 ring-slate-700 relative group">
                                                     <RemotionPlayer
+                                                        key={`player-${plan.scenes.map(s => `${s.id}-${s.duration}-${s.title}`).join('-')}`}
                                                         ref={playerRef}
                                                         component={MainVideo}
                                                         inputProps={{ plan }}
@@ -629,33 +606,71 @@ export default function App() {
                                                     />
                                                 </div>
 
-                                                {/* Timeline / Scenes */}
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                                    {plan.scenes && Array.isArray(plan.scenes) && plan.scenes.map((scene, idx) => (
-                                                        <div
-                                                            key={`${scene.id}-${idx}`}
-                                                            className={`p-3 rounded-lg border cursor-pointer transition-all ${idx === activeSceneIndex
-                                                                ? 'bg-indigo-600/20 border-indigo-500 ring-1 ring-indigo-500/50'
-                                                                : 'bg-slate-800 border-slate-700 hover:border-slate-600'
-                                                                }`}
-                                                            onClick={() => {
-                                                                setActiveSceneIndex(idx);
-                                                                if (playerRef.current) {
-                                                                    const startFrame = plan.scenes.slice(0, idx).reduce((acc, s) => acc + (s.duration * 30), 0);
-                                                                    playerRef.current.seekTo(startFrame);
-                                                                }
-                                                            }}
-                                                        >
-                                                            <div className="flex justify-between items-start mb-2">
-                                                                <span className="text-xs font-bold text-slate-400">Scene {idx + 1}</span>
-                                                                <span className="text-[10px] bg-slate-950 px-1.5 py-0.5 rounded text-slate-500">{scene.duration}s</span>
+                                                {/* Timeline / Scenes - Simplified Horizontal Scroll */}
+                                                <div className="relative">
+                                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Scene Timeline</h3>
+                                                    <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+                                                        {plan.scenes && Array.isArray(plan.scenes) && plan.scenes.map((scene, idx) => (
+                                                            <div
+                                                                key={`${scene.id}-${idx}`}
+                                                                className={`flex-shrink-0 w-32 rounded-lg border cursor-pointer transition-all overflow-hidden ${idx === activeSceneIndex
+                                                                    ? 'border-indigo-500 ring-2 ring-indigo-500/50 shadow-lg shadow-indigo-500/20'
+                                                                    : 'border-slate-700 hover:border-slate-600'
+                                                                    }`}
+                                                                onClick={() => {
+                                                                    setActiveSceneIndex(idx);
+                                                                    if (playerRef.current) {
+                                                                        const startFrame = plan.scenes.slice(0, idx).reduce((acc, s) => acc + (s.duration * 30), 0);
+                                                                        playerRef.current.seekTo(startFrame);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {/* Compact Visual Preview */}
+                                                                <div className="aspect-video bg-slate-900 relative overflow-hidden">
+                                                                    {scene.videoUrl ? (
+                                                                        <video
+                                                                            src={scene.videoUrl}
+                                                                            className="w-full h-full object-cover"
+                                                                            muted
+                                                                            playsInline
+                                                                        />
+                                                                    ) : (
+                                                                        <div
+                                                                            className="w-full h-full flex items-center justify-center text-2xl"
+                                                                            style={{
+                                                                                background: `linear-gradient(135deg, ${plan.brandColor}50, ${plan.brandColor}20)`
+                                                                            }}
+                                                                        >
+                                                                            {scene.type === 'kinetic_text' && '📝'}
+                                                                            {scene.type === 'device_showcase' && '📱'}
+                                                                            {scene.type === 'bento_grid' && '▦'}
+                                                                            {scene.type === 'social_proof' && '⭐'}
+                                                                            {scene.type === 'cta_finale' && '🎯'}
+                                                                            {scene.type === 'isometric_illustration' && '🎨'}
+                                                                            {scene.type === 'slot_transition' && '✨'}
+                                                                            {scene.type === 'kinetic_typo' && '✍️'}
+                                                                            {scene.type === 'flat_screenshot' && '🖼️'}
+                                                                            {!['kinetic_text', 'device_showcase', 'bento_grid', 'social_proof', 'cta_finale', 'isometric_illustration', 'slot_transition', 'kinetic_typo', 'flat_screenshot'].includes(scene.type) && '🎬'}
+                                                                        </div>
+                                                                    )}
+                                                                    {/* Scene Number */}
+                                                                    <div className="absolute top-1 left-1 bg-black/80 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold text-white">
+                                                                        {idx + 1}
+                                                                    </div>
+                                                                    {/* Duration */}
+                                                                    <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur-sm px-1.5 py-0.5 rounded text-[9px] font-bold text-emerald-400">
+                                                                        {scene.duration}s
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Compact Info */}
+                                                                <div className="p-2 bg-slate-800/50">
+                                                                    <p className="text-[10px] font-semibold text-white truncate">{scene.title}</p>
+                                                                    <p className="text-[8px] text-slate-500 uppercase truncate">{scene.type.replace(/_/g, ' ')}</p>
+                                                                </div>
                                                             </div>
-                                                            <p className="text-sm font-medium text-white line-clamp-2 mb-2">{scene.title}</p>
-                                                            <div className="flex items-center gap-1 text-[10px] text-slate-500 uppercase">
-                                                                {scene.type ? scene.type.replace('_', ' ') : 'Scene'}
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -688,7 +703,7 @@ export default function App() {
                                                         Pro Tip
                                                     </h3>
                                                     <p className="text-indigo-200 text-sm">
-                                                        Use Director Mode to refine scene visuals instantly.
+                                                        Use Director Studio to customize your video text, brand, and timing.
                                                     </p>
                                                 </div>
                                             </div>
@@ -696,21 +711,14 @@ export default function App() {
                                     </div>
                                 </main>
 
-                                {/* Sidebar Editor */}
-                                <div
-                                    className={`fixed top-20 right-0 bottom-0 w-[400px] bg-slate-900 border-l border-slate-700 transform transition-transform duration-300 z-50 shadow-2xl ${isEditing ? 'translate-x-0' : 'translate-x-full'}`}
-                                >
-                                    {plan && (
-                                        <PlanEditor
-                                            plan={plan}
-                                            onUpdate={handlePlanUpdate}
-                                            onClose={() => setIsEditing(false)}
-                                            onRegenerateVisual={handleEditorRegenerate}
-                                            isRegenerating={isRegenerating}
-                                            className="h-full w-full"
-                                        />
-                                    )}
-                                </div>
+                                {/* Director Studio Modal */}
+                                {isEditing && plan && (
+                                    <ContentEditor
+                                        plan={plan}
+                                        onUpdate={handlePlanUpdate}
+                                        onClose={() => setIsEditing(false)}
+                                    />
+                                )}
                             </div>
                         </div>
                     )}
@@ -719,3 +727,4 @@ export default function App() {
         </ErrorBoundary>
     );
 }
+

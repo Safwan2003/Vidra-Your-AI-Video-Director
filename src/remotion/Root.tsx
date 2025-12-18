@@ -21,13 +21,14 @@ export const RemotionRoot: React.FC = () => {
                     plan: null as VideoPlan | null
                 }}
                 calculateMetadata={({ props }) => {
-                    if (!props.plan) {
+                    const videoProps = props as { plan: VideoPlan };
+                    if (!videoProps.plan || !videoProps.plan.scenes) {
                         return { durationInFrames: 300 };
                     }
                     // Calculate actual duration from plan
-                    const totalDuration = props.plan.scenes.reduce((acc, scene) => acc + scene.duration, 0);
+                    const totalDuration = videoProps.plan.scenes.reduce((acc, scene) => acc + Number(scene.duration || 0), 0);
                     return {
-                        durationInFrames: Math.floor(totalDuration * 30)
+                        durationInFrames: Math.max(1, Math.floor(totalDuration)) // Ensure at least 1 frame, integer
                     };
                 }}
             />
@@ -79,31 +80,34 @@ export const RemotionRoot: React.FC = () => {
             <Composition
                 id="PretaaTemplate"
                 component={PretaaReactTemplate}
-                durationInFrames={1800} // 60 seconds (9 scenes)
+                durationInFrames={2000} // ~66 seconds (9 scenes + buffer)
                 fps={30}
                 width={1920}
                 height={1080}
                 defaultProps={{
-                    brand: {
-                        name: 'TechCorp',
-                        accentColor: '#3b82f6',
-                        tagline: 'Innovation in Motion'
-                    },
-                    copy: {
-                        headline: 'The Future is Here',
-                        subheadline: 'Introducing AI-Powered Solutions',
-                        problem: 'Traditional tools are slow and complex',
-                        solution: 'Our platform automates everything',
-                        features: [
-                            { title: 'Fast', subtitle: '10x faster processing', icon: '⚡' },
-                            { title: 'Smart', subtitle: 'AI-powered insights', icon: '🧠' },
-                            { title: 'Secure', subtitle: 'Enterprise-grade security', icon: '🔒' }
+                    plan: {
+                        brandName: 'Pretaa AI',
+                        brandColor: '#ef4444',
+                        scenes: [
+                            {
+                                id: 1,
+                                type: 'kinetic_text',
+                                duration: 150,
+                                mainText: 'Hello World',
+                                subText: 'This is Dynamic'
+                            },
+                            {
+                                id: 2,
+                                type: 'bento_grid',
+                                duration: 200,
+                                bentoItems: [
+                                    { title: 'Feature One', content: 'It works!' },
+                                    { title: 'Feature Two', content: 'Fully Generic' }
+                                ]
+                            }
                         ]
-                    },
-                    cta: {
-                        text: 'Get Started Today'
-                    }
-                } as any}
+                    } as any
+                }}
             />
         </>
     );

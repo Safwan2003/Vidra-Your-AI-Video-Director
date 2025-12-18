@@ -1,5 +1,5 @@
 export type SceneType = 'kinetic_text' | 'ui_mockup' | 'isometric_illustration' | 'device_showcase' | 'data_visualization' | 'split_comparison' | 'cta_finale' | 'bento_grid' | 'device_cloud'
-    | '3d_laptop_orbit' | '3d_phone_float' | 'exploded_ui_view' | 'floating_ui_layers' | 'social_proof' | 'flat_screenshot' | 'slot_transition';
+    | '3d_laptop_orbit' | '3d_phone_float' | 'exploded_ui_view' | 'floating_ui_layers' | 'social_proof' | 'flat_screenshot' | 'slot_transition' | 'kinetic_typo';
 
 export type AnimationType = 'pop-up' | 'slide-in' | 'fade' | 'stack' | 'typewriter';
 export type CameraAngle = 'isometric_left' | 'isometric_right' | 'cinematic_low' | 'straight_on';
@@ -133,6 +133,20 @@ export interface VideoScene {
     customMedia?: { type: 'image' | 'video', url: string } | string;
     customerLogos?: string[];
     metrics?: Array<{ value: string; label: string }>;
+
+    // Director Mode / Generative Fields
+    visualDescription?: string;
+    wanPrompt?: string;
+    voiceoverScript?: string; // specific voiceover script if different from main script
+    svgContent?: string; // Generated SVG content
+    videoUrl?: string; // Generated video URL (e.g. from Wan)
+    ctaText?: string;
+    ctaButtonText?: string;
+    logoUrl?: string;
+    screenshotUrl?: string;
+    mobileScreenshotUrl?: string;
+    domain?: string;
+    notificationText?: string;
 
     // Legacy
     animationType?: AnimationType;

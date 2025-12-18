@@ -120,7 +120,7 @@ export const Slot6Outro: React.FC<Slot6OutroProps> = ({
                     {/* Connector Line (Visually connecting from top of frame) */}
                     <div style={{
                         position: 'absolute', top: -100,
-                        width: '2px', height: '100px',
+                        width: '2px',
                         background: `linear-gradient(180deg, transparent 0%, ${accentColor} 100%)`,
                         height: `${lineGrow}px`,
                         opacity: lineOp,

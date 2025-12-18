@@ -3,13 +3,27 @@ import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } fr
 
 // Interfaces
 interface Slot5TrustProps {
-    logos?: string[]; 
+    logos?: string[];
     sectionTitle?: string;
     accentColor?: string;
 }
 
+interface FeedbackItem {
+    text: string;
+    urgency?: 'High' | 'Low';
+    icon?: string;
+    xOffset?: number;
+}
+
+interface Slot5TrustProps {
+    logos?: string[];
+    sectionTitle?: string;
+    accentColor?: string;
+    feedbacks?: FeedbackItem[];
+}
+
 // Sample Feedback Data based on Reference Images
-const FEEDBACK_ITEMS = [
+const DEFAULT_FEEDBACK_ITEMS: FeedbackItem[] = [
     { text: "Premium subscription is too expensive", urgency: 'Low', icon: '💎', xOffset: 0 },
     { text: "Shipping delays, Europe", urgency: 'High', icon: '🚨', xOffset: 20 },
     { text: "Users want more scheduling functionality", urgency: 'Low', icon: '📅', xOffset: -10 },
@@ -23,10 +37,21 @@ const FEEDBACK_ITEMS = [
 ];
 
 export const Slot5Trust: React.FC<Slot5TrustProps> = ({
-    accentColor = '#8b5cf6' 
+    accentColor = '#8b5cf6',
+    feedbacks = []
 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
+
+    // Use dynamic feedbacks if provided, repeating/filling if necessary to create enough density for the visual
+    // Or just fallback to defaults.
+    // Enhanced strategy: If dynamic feedbacks exist, map them.
+    const displayItems = feedbacks.length > 0 ? feedbacks.map((f, i) => ({
+        ...f,
+        urgency: f.urgency || 'Low',
+        icon: f.icon || '💬',
+        xOffset: (i % 3 - 1) * 10 // Basic stagger logic
+    })) : DEFAULT_FEEDBACK_ITEMS;
 
     return (
         <AbsoluteFill style={{
@@ -35,9 +60,8 @@ export const Slot5Trust: React.FC<Slot5TrustProps> = ({
             perspective: '2000px', // Deep perspective for 3D feel
             overflow: 'hidden'
         }}>
-            
-            {/* Central Subject Placeholder (Optional, can be removed if user wants just text, 
-                but reference shows a person. We'll use a subtle silhouette or just focus on the ring) */}
+
+            {/* Central Subject Placeholder */}
             <div style={{
                 position: 'absolute',
                 width: '100px', height: '300px',
@@ -55,23 +79,23 @@ export const Slot5Trust: React.FC<Slot5TrustProps> = ({
                 width: '100%', height: '100%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-                {FEEDBACK_ITEMS.map((item, i) => {
+                {displayItems.map((item, i) => {
                     // Cylinder Logic
-                    const totalItems = FEEDBACK_ITEMS.length;
+                    const totalItems = displayItems.length;
                     const angleStep = (Math.PI * 2) / totalItems;
                     const currentAngle = angleStep * i + (frame / 200); // Rotate continuously
-                    
+
                     const radius = 500; // Large radius
                     const x = Math.sin(currentAngle) * radius;
                     const z = Math.cos(currentAngle) * radius - 200; // Pull back slightly
-                    
+
                     // Staggered Y Pattern (Helix-ish)
-                    const y = (i % 3 - 1) * 120 + item.xOffset; // -120, 0, 120
+                    const y = (i % 3 - 1) * 120 + (item.xOffset || 0);
 
                     // Opacity based on Z (fade back items)
                     const opacity = interpolate(z, [-700, 300], [0.2, 1]);
                     const scale = interpolate(z, [-700, 300], [0.6, 1]);
-                    
+
                     // Entrance
                     const entrance = spring({ frame: frame - (i * 5), fps, from: 0, to: 1, config: { damping: 15 } });
 
@@ -88,26 +112,26 @@ export const Slot5Trust: React.FC<Slot5TrustProps> = ({
                             minWidth: '280px',
                             border: item.urgency === 'High' ? '1px solid #fee2e2' : '1px solid white'
                         }}>
-                             {/* Icon */}
-                             <div style={{ fontSize: '20px' }}>{item.icon}</div>
-                             
-                             {/* Content */}
-                             <div style={{ flex: 1 }}>
-                                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
-                                     {item.text}
-                                 </div>
-                             </div>
+                            {/* Icon */}
+                            <div style={{ fontSize: '20px' }}>{item.icon}</div>
 
-                             {/* Urgency Badge */}
-                             <div style={{
-                                 fontSize: '10px', fontWeight: 700,
-                                 padding: '4px 8px', borderRadius: '8px',
-                                 background: item.urgency === 'High' ? '#fee2e2' : '#f1f5f9',
-                                 color: item.urgency === 'High' ? '#dc2626' : '#64748b',
-                                 border: item.urgency === 'High' ? '1px solid #fecaca' : 'none'
-                             }}>
-                                 {item.urgency}
-                             </div>
+                            {/* Content */}
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
+                                    {item.text}
+                                </div>
+                            </div>
+
+                            {/* Urgency Badge */}
+                            <div style={{
+                                fontSize: '10px', fontWeight: 700,
+                                padding: '4px 8px', borderRadius: '8px',
+                                background: item.urgency === 'High' ? '#fee2e2' : '#f1f5f9',
+                                color: item.urgency === 'High' ? '#dc2626' : '#64748b',
+                                border: item.urgency === 'High' ? '1px solid #fecaca' : 'none'
+                            }}>
+                                {item.urgency}
+                            </div>
                         </div>
                     );
                 })}

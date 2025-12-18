@@ -172,7 +172,7 @@ const ChatBubble = ({ x, y, text, delay, direction = 'left', active = false }: a
     );
 };
 
-export const PretaaSlot1Intro = () => {
+export const PretaaSlot1Intro = ({ title }: { title?: string }) => {
     return (
         <AbsoluteFill style={{
             background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
@@ -212,6 +212,35 @@ export const PretaaSlot1Intro = () => {
             <ChatBubble x={82} y={48} text='#!@' dir='right' delay={55} active />
             <ChatBubble x={38} y={65} text='...' dir='right' delay={60} />
 
+            {/* Dynamic Intro Title */}
+            <div style={{
+                position: 'absolute',
+                top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 30,
+                textAlign: 'center'
+            }}>
+                <h1 style={{
+                    fontSize: 120,
+                    fontWeight: 900,
+                    color: '#0f172a',
+                    letterSpacing: '-0.04em',
+                    textShadow: '0 4px 30px rgba(0,0,0,0.1)',
+                    margin: 0,
+                    opacity: 0, // In a real implementation this would animate in
+                    animation: 'fadeInUp 1s forwards 0.5s'
+                }}>
+                    {title || "Welcome"}
+                </h1>
+            </div>
+            <style>
+                {`
+                    @keyframes fadeInUp {
+                        from { opacity: 0; transform: translateY(40px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                `}
+            </style>
         </AbsoluteFill>
     );
 };

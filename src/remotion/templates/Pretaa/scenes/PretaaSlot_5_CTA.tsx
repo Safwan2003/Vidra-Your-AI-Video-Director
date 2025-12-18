@@ -76,7 +76,7 @@ const JourneyCard = ({ x, y, text, title, sub, delay, direction = 'top' }: any) 
     );
 };
 
-export const PretaaSlot5CTA = () => {
+export const PretaaSlot5CTA = ({ title }: { title?: string }) => {
     const frame = useCurrentFrame();
 
     // Path Points (Scaled to match 5(10).jpg wave)

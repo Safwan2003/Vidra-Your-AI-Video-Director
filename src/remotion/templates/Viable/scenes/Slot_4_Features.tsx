@@ -43,9 +43,44 @@ const DATA_SOURCES: SourceItem[] = [
     { id: 'mkt', title: 'Marketing', iconType: 'megaphone', color: '#a855f7', x: 80 },
 ];
 
-export const Slot4Features: React.FC = () => {
+interface FeatureItem {
+    title: string;
+    subtitle?: string;
+    icon?: string;
+    color?: string;
+}
+
+interface Slot4FeaturesProps {
+    features?: FeatureItem[];
+    sectionTitle?: string;
+    accentColor?: string;
+}
+
+export const Slot4Features: React.FC<Slot4FeaturesProps> = ({
+    features = [],
+    sectionTitle,
+    accentColor = '#a855f7'
+}) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
+
+    // Default Fallback
+    const defaultFeatures = [
+        { id: 'prod', title: 'Product', iconType: 'product', color: '#ef4444', x: 20 },
+        { id: 'cx', title: 'Customer', subtitle: 'Experience', iconType: 'star', color: '#f59e0b', x: 40 },
+        { id: 'emp', title: 'Employee', subtitle: 'Engagement', iconType: 'chat', color: '#8b5cf6', x: 60 },
+        { id: 'mkt', title: 'Marketing', iconType: 'megaphone', color: '#a855f7', x: 80 },
+    ];
+
+    // Merge/Map dynamic features to layout
+    const displayItems = features.length > 0 ? features.map((f, i) => ({
+        id: `feat-${i}`,
+        title: f.title,
+        subtitle: f.subtitle,
+        iconType: 'star', // Default icon for dynamic content for now
+        color: f.color || accentColor,
+        x: 20 + (i * 20) // Distribute: 20, 40, 60, 80...
+    })) : defaultFeatures;
 
     return (
         <AbsoluteFill style={{
@@ -53,46 +88,39 @@ export const Slot4Features: React.FC = () => {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden'
         }}>
-
             <div style={{ position: 'relative', width: '100%', height: '100%', maxWidth: '1200px' }}>
+
+                {/* Section Title if provided */}
+                {sectionTitle && (
+                    <div style={{
+                        position: 'absolute', top: '150px', width: '100%', textAlign: 'center',
+                        fontSize: '40px', fontWeight: 800, color: '#1e293b', zIndex: 20
+                    }}>
+                        {sectionTitle}
+                    </div>
+                )}
 
                 {/* SVG Connections Layer (Behind icons) */}
                 <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible' }}>
-                    {DATA_SOURCES.map((item, i) => {
-                        // Calculate start (bottom center) and end (icon position)
-                        // Assuming container is 1200px wide. Center is 600px.
-                        // Item x is percentage.
-
-                        const startX = 600; // Bottom Center
-                        const startY = 1000; // Below screen
-
-                        // Approximate end positions based on x% and visual layout
-                        // Visual layout: Icons are around y=40% (lets say 400px from top)
+                    {displayItems.map((item: any, i: number) => {
+                        const startX = 600;
+                        const startY = 1000;
                         const endX = (item.x / 100) * 1200;
                         const endY = 400;
-
-                        // Control Points for organic flow
                         const cp1X = startX;
                         const cp1Y = 800;
                         const cp2X = endX;
                         const cp2Y = 600;
-
                         const d = `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`;
-
-                        // Animation
                         const pathDelay = 15 + i * 10;
                         const draw = interpolate(frame - pathDelay, [0, 40], [0, 1], { extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic) });
 
                         return (
                             <g key={item.id}>
-                                {/* Glow Path */}
                                 <path d={d} stroke={item.color} strokeWidth="12" fill="none" opacity="0.2" strokeLinecap="round"
                                     strokeDasharray={1500} strokeDashoffset={(1 - draw) * 1500} style={{ filter: 'blur(8px)' }} />
-                                {/* Main Path */}
                                 <path d={d} stroke={item.color} strokeWidth="6" fill="none" strokeLinecap="round"
                                     strokeDasharray={1500} strokeDashoffset={(1 - draw) * 1500} />
-
-                                {/* Traveling Particle */}
                                 {draw > 0 && draw < 1 && (
                                     <circle r="6" fill="white" style={{ offsetPath: `path('${d}')`, offsetDistance: `${draw * 100}%` }} />
                                 )}
@@ -102,27 +130,26 @@ export const Slot4Features: React.FC = () => {
                 </svg>
 
                 {/* Icons Layer */}
-                {DATA_SOURCES.map((item, i) => {
+                {displayItems.map((item: any, i: number) => {
                     const delay = 40 + i * 8;
                     const scale = spring({ frame: frame - delay, fps, from: 0, to: 1, config: { damping: 12 } });
-                    const yOffset = Math.sin((frame - delay) / 40) * 10; // Floating
+                    const yOffset = Math.sin((frame - delay) / 40) * 10;
 
-                    const IconComp = Icons[item.iconType];
+                    const IconComp = Icons[item.iconType as keyof typeof Icons] || Icons.star;
 
                     return (
                         <div key={item.id} style={{
                             position: 'absolute',
                             left: `${item.x}%`,
-                            top: '400px', // Center Y
+                            top: '400px',
                             transform: `translate(-50%, -50%) translateY(${yOffset}px) scale(${scale})`,
                             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px',
                             zIndex: 10
                         }}>
-                            {/* Circle Icon */}
                             <div style={{
                                 width: '100px', height: '100px',
                                 borderRadius: '50%',
-                                background: item.color, // Solid color from reference
+                                background: item.color,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 boxShadow: `0 20px 40px -10px ${item.color}80`,
                                 color: 'white'
@@ -131,8 +158,6 @@ export const Slot4Features: React.FC = () => {
                                     <IconComp />
                                 </div>
                             </div>
-
-                            {/* Label */}
                             <div style={{ textAlign: 'center', color: '#1e293b' }}>
                                 <div style={{ fontSize: '20px', fontWeight: 700 }}>{item.title}</div>
                                 {item.subtitle && (
