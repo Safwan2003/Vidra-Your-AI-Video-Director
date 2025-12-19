@@ -6,6 +6,7 @@ interface Slot1ProblemProps {
     logoUrl?: string;
     tagline?: string;
     accentColor?: string;
+    screenshotUrl?: string;
 }
 
 // Icon components for the floating widgets
@@ -43,7 +44,8 @@ const LogoWidget = ({ color, letter, icon }: { color: string, letter?: string, i
 );
 
 export const Slot1Problem: React.FC<Slot1ProblemProps> = ({
-    accentColor = '#22c55e'
+    accentColor = '#22c55e',
+    screenshotUrl
 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
@@ -149,50 +151,57 @@ export const Slot1Problem: React.FC<Slot1ProblemProps> = ({
                             position: 'relative',
                             boxShadow: 'inset 0 0 20px rgba(0,0,0,0.1)'
                         }}>
-                            {/* TABLE UI */}
-                            <div style={{ padding: '40px' }}>
-                                {/* Header */}
-                                <div style={{
-                                    display: 'flex', padding: '15px 0',
-                                    borderBottom: `3px solid ${accentColor}30`, marginBottom: '20px'
-                                }}>
-                                    {['Email', 'NPS', 'Channel', 'Feedback', 'Survey Results'].map((h, i) => (
-                                        <div key={i} style={{
-                                            flex: 1, fontWeight: 800, color: '#334155', fontSize: '18px',
-                                            paddingLeft: '10px'
-                                        }}>{h}</div>
-                                    ))}
-                                </div>
-
-                                {/* Rows */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                    {rows.map((row, i) => {
-                                        const rowDelay = i * 5 + 20;
-                                        const rowOp = interpolate(frame - rowDelay, [0, 15], [0, 1], { extrapolateRight: 'clamp' });
-                                        const rowX = interpolate(frame - rowDelay, [0, 15], [-20, 0], { extrapolateRight: 'clamp', easing: Easing.out(Easing.quad) });
-
-                                        if (frame < rowDelay) return null;
-
-                                        return (
+                            {screenshotUrl ? (
+                                <Img
+                                    src={screenshotUrl}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                            ) : (
+                                /* DEFAULT TABLE UI */
+                                <div style={{ padding: '40px' }}>
+                                    {/* Header */}
+                                    <div style={{
+                                        display: 'flex', padding: '15px 0',
+                                        borderBottom: `3px solid ${accentColor}30`, marginBottom: '20px'
+                                    }}>
+                                        {['Email', 'NPS', 'Channel', 'Feedback', 'Survey Results'].map((h, i) => (
                                             <div key={i} style={{
-                                                display: 'flex', alignItems: 'center', opacity: rowOp, transform: `translateX(${rowX}px)`
-                                            }}>
-                                                {[1, 2, 3, 4, 5].map((col, j) => (
-                                                    <div key={j} style={{ flex: 1, paddingLeft: '10px' }}>
-                                                        <div style={{
-                                                            height: '12px', borderRadius: '6px',
-                                                            background: col === 5 ? accentColor : '#e2e8f0',
-                                                            opacity: col === 5 ? 0.3 : 1,
-                                                            width: `${60 + Math.random() * 30}%`
-                                                        }} />
-                                                        {col === 4 && <div style={{ height: '12px', borderRadius: '6px', background: '#e2e8f0', width: '40%', marginTop: '6px' }} />}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        );
-                                    })}
+                                                flex: 1, fontWeight: 800, color: '#334155', fontSize: '18px',
+                                                paddingLeft: '10px'
+                                            }}>{h}</div>
+                                        ))}
+                                    </div>
+
+                                    {/* Rows */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                        {rows.map((row, i) => {
+                                            const rowDelay = i * 5 + 20;
+                                            const rowOp = interpolate(frame - rowDelay, [0, 15], [0, 1], { extrapolateRight: 'clamp' });
+                                            const rowX = interpolate(frame - rowDelay, [0, 15], [-20, 0], { extrapolateRight: 'clamp', easing: Easing.out(Easing.quad) });
+
+                                            if (frame < rowDelay) return null;
+
+                                            return (
+                                                <div key={i} style={{
+                                                    display: 'flex', alignItems: 'center', opacity: rowOp, transform: `translateX(${rowX}px)`
+                                                }}>
+                                                    {[1, 2, 3, 4, 5].map((col, j) => (
+                                                        <div key={j} style={{ flex: 1, paddingLeft: '10px' }}>
+                                                            <div style={{
+                                                                height: '12px', borderRadius: '6px',
+                                                                background: col === 5 ? accentColor : '#e2e8f0',
+                                                                opacity: col === 5 ? 0.3 : 1,
+                                                                width: `${60 + Math.random() * 30}%`
+                                                            }} />
+                                                            {col === 4 && <div style={{ height: '12px', borderRadius: '6px', background: '#e2e8f0', width: '40%', marginTop: '6px' }} />}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>

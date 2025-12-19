@@ -51,7 +51,7 @@ interface FeatureItem {
 }
 
 interface Slot4FeaturesProps {
-    features?: FeatureItem[];
+    features?: Array<{ title: string; description: string; subtitle?: string; color?: string; }>; // Expanded to match VideoScene
     sectionTitle?: string;
     accentColor?: string;
 }
@@ -76,7 +76,7 @@ export const Slot4Features: React.FC<Slot4FeaturesProps> = ({
     const displayItems = features.length > 0 ? features.map((f, i) => ({
         id: `feat-${i}`,
         title: f.title,
-        subtitle: f.subtitle,
+        subtitle: f.subtitle || f.description, // HANDLE BOTH CASES
         iconType: 'star', // Default icon for dynamic content for now
         color: f.color || accentColor,
         x: 20 + (i * 20) // Distribute: 20, 40, 60, 80...

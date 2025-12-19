@@ -32,60 +32,106 @@ const SceneRenderer = ({ scene, brand }: { scene: VideoScene, brand: any }) => {
 
     // 1. INTRO
     if (scene.id === 1) {
-        return <PretaaSlot1Intro title={scene.mainText || scene.title} />;
+        return <PretaaSlot1Intro
+            title={scene.mainText || scene.title}
+            backgroundColor={scene.backgroundColor}
+            mainTextColor={scene.mainTextColor}
+        />;
     }
 
     // 2. PROBLEM (High Energy Text)
     if (scene.id === 2) {
-        return <PretaaSlot2Problem title={scene.mainText} subText={scene.subText} />;
+        return <PretaaSlot2Problem
+            title={scene.mainText}
+            subText={scene.subText}
+            backgroundColor={scene.backgroundColor}
+            mainTextColor={scene.mainTextColor}
+        />;
     }
 
     // 6. CTA / JOURNEY (Final Text) - Check ID 6 carefully as it moved
     if (scene.id === 6 && type !== 'device_showcase') {
-        return <PretaaSlot5CTA title={scene.mainText} />;
+        return <PretaaSlot5CTA
+            title={scene.mainText}
+            backgroundColor={scene.backgroundColor}
+            mainTextColor={scene.mainTextColor}
+        />;
     }
 
     switch (scene.id) {
         // 3. SOLUTION
         case 3:
-            return <PretaaSlot3Solution solutionText={scene.mainText} screenshotUrl={scene.screenshotUrl} />;
+            return <PretaaSlot3Solution
+                solutionText={scene.mainText}
+                screenshotUrl={scene.screenshotUrl}
+                backgroundColor={scene.backgroundColor}
+                mainTextColor={scene.mainTextColor}
+            />;
 
         // 4. FEATURES
         case 4:
+            // Prefer editor features, fallback to bentoItems
+            const features = (scene.features && scene.features.length > 0) ? scene.features : (scene.bentoItems?.map(item => ({
+                title: item.title || 'Feature',
+                description: item.content || 'Description', // Map content to description
+                icon: item.icon || 'star'
+            })) || []);
+
             return (
-                <GenericFeatures
-                    accentColor={brand?.accentColor}
-                    features={scene.bentoItems?.map(item => ({
-                        title: item.title || 'Feature',
-                        description: item.content || 'Description',
-                        action: 'Learn More'
-                    })) || []}
+                <PretaaSlot4Features
+                    features={features}
+                    backgroundColor={scene.backgroundColor}
+                    mainTextColor={scene.mainTextColor}
                 />
             );
 
         // 5. SOCIAL PROOF
         case 5:
-            return <PretaaSlot6Review quote={scene.mainText} author={scene.subText} />;
+            return <PretaaSlot6Review
+                quote={scene.mainText}
+                author={scene.subText}
+                backgroundColor={scene.backgroundColor}
+                mainTextColor={scene.mainTextColor}
+            />;
 
         // 6. DEMO (Device Showcase)
         case 6:
-            return <PretaaSlot3Solution solutionText={scene.mainText} screenshotUrl={scene.mobileScreenshotUrl || scene.screenshotUrl} />;
+            return <PretaaSlot3Solution
+                solutionText={scene.mainText}
+                screenshotUrl={scene.mobileScreenshotUrl || scene.screenshotUrl}
+                backgroundColor={scene.backgroundColor}
+                mainTextColor={scene.mainTextColor}
+            />;
 
         // 7. VISION / DEVICE SHOWCASE
         case 7:
             return <PretaaSlot7Outro
                 ctaText={scene.mainText || "The Future"}
+                ctaUrl={scene.ctaUrl || scene.domain}
                 screenshotUrl={scene.screenshotUrl}
                 mobileScreenshotUrl={scene.mobileScreenshotUrl}
+                backgroundColor={scene.backgroundColor}
+                mainTextColor={scene.mainTextColor}
             />;
 
         // 8. SATISFACTION / RENEWAL
         case 8:
-            return <PretaaSlot_8_Satisfaction brandColor={brand?.accentColor} notificationText={scene.notificationText || scene.mainText} />;
+            return <PretaaSlot_8_Satisfaction
+                brandColor={brand?.accentColor}
+                notificationText={scene.notificationText || scene.mainText}
+                backgroundColor={scene.backgroundColor}
+                mainTextColor={scene.mainTextColor}
+            />;
 
         // 9. FINAL CTA
         case 9: // For Scene 9 specifically
-            return <PretaaSlot_9_Final brandName={brand.name} domain={scene.domain || "pretaa.com"} ctaText={scene.ctaText} />;
+            return <PretaaSlot_9_Final
+                brandName={brand.name}
+                domain={scene.domain || "pretaa.com"}
+                ctaText={scene.ctaText}
+                backgroundColor={scene.backgroundColor}
+                mainTextColor={scene.mainTextColor}
+            />;
 
         default:
             // Generic Fallback
@@ -172,7 +218,7 @@ export const PretaaReactTemplate: React.FC<PretaaReactTemplateProps> = ({ plan }
             <TransitionSeries>
                 {effectiveScenes.map((scene, index) => (
                     <React.Fragment key={scene.id || index}>
-                        <TransitionSeries.Sequence durationInFrames={Math.floor((scene.duration || 5) * 30)}>
+                        <TransitionSeries.Sequence durationInFrames={Math.max(1, Math.floor((scene.duration || 5) * 30))}>
                             <SceneRenderer scene={scene} brand={effectiveBrand} />
                         </TransitionSeries.Sequence>
 

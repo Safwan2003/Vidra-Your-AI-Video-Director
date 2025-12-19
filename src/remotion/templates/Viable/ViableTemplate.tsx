@@ -24,8 +24,7 @@ const SceneRenderer = ({ scene, brand }: { scene: VideoScene, brand: any }) => {
                 brandName={brand.name}
                 accentColor={brand.accentColor}
                 tagline={scene.subText || "The old way is broken."}
-            // Assuming Slot1 accepts a main problem text prop, if not we'll allow it to use default or update logic
-            // For now, passing brand info which it definitely takes.
+                screenshotUrl={scene.screenshotUrl}
             />;
 
         // 2. TRANSITION / INTRO
@@ -40,19 +39,21 @@ const SceneRenderer = ({ scene, brand }: { scene: VideoScene, brand: any }) => {
         case 3:
             return <Slot3Hero
                 screenUrl={scene.screenshotUrl}
+                screenshotUrl={scene.screenshotUrl}
                 title={scene.mainText}
                 productName={brand.name}
                 accentColor={brand.accentColor}
+                features={scene.features} // Pass features for dynamic stats
             />;
 
         // 4. FEATURES
         case 4:
-            // Convert bentoItems to features prop
-            const features = scene.bentoItems?.map(item => ({
+            // Prefer editor features, fallback to bentoItems
+            const features = (scene.features && scene.features.length > 0) ? scene.features : (scene.bentoItems?.map(item => ({
                 title: item.title || 'Feature',
-                subtitle: item.content || 'Description',
+                description: item.content || 'Description', // Map content to description
                 icon: 'star'
-            })) || [];
+            })) || []);
 
             return <Slot4Features
                 features={features}
@@ -78,7 +79,7 @@ const SceneRenderer = ({ scene, brand }: { scene: VideoScene, brand: any }) => {
             return <Slot6Outro
                 brandName={brand.name}
                 ctaText={scene.ctaText || scene.mainText || "Get Started"}
-                ctaUrl={scene.domain || "viable.com"}
+                ctaUrl={scene.ctaUrl || scene.domain || "viable.com"}
                 accentColor={brand.accentColor}
             />;
 
@@ -122,7 +123,7 @@ export const ViableTemplate: React.FC<ViableReactTemplateProps> = ({ plan }) => 
             <TransitionSeries>
                 {effectiveScenes.map((scene, index) => (
                     <React.Fragment key={scene.id || index}>
-                        <TransitionSeries.Sequence durationInFrames={Math.floor((scene.duration || 5) * 30)}>
+                        <TransitionSeries.Sequence durationInFrames={Math.max(1, Math.floor((scene.duration || 5) * 30))}>
                             <SceneRenderer scene={scene} brand={brand} />
                         </TransitionSeries.Sequence>
 

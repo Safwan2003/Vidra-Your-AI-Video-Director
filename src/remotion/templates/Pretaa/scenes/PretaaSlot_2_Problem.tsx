@@ -147,7 +147,17 @@ const GlassMoney = ({ delay }: any) => {
     );
 };
 
-export const PretaaSlot2Problem = ({ title, subText }: { title?: string, subText?: string }) => {
+export const PretaaSlot2Problem = ({
+    title,
+    subText,
+    backgroundColor,
+    mainTextColor
+}: {
+    title?: string,
+    subText?: string,
+    backgroundColor?: string,
+    mainTextColor?: string
+}) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
 
@@ -159,7 +169,7 @@ export const PretaaSlot2Problem = ({ title, subText }: { title?: string, subText
 
     return (
         <AbsoluteFill style={{
-            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+            background: backgroundColor || 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
             overflow: 'hidden'
         }}>
             {/* Red Background Flare (Problem Indication) - Pulsing */}
@@ -187,7 +197,7 @@ export const PretaaSlot2Problem = ({ title, subText }: { title?: string, subText
                 transform: `translateY(${interpolate(frame, [20, 40], [20, 0])}px)`
             }}>
                 <h2 style={{
-                    fontSize: 72, color: '#1e293b', margin: 0, fontWeight: 800,
+                    fontSize: 72, color: mainTextColor || '#1e293b', margin: 0, fontWeight: 800,
                     letterSpacing: '-2px',
                     textShadow: '0 10px 30px rgba(0,0,0,0.1)'
                 }}>
@@ -195,7 +205,7 @@ export const PretaaSlot2Problem = ({ title, subText }: { title?: string, subText
                 </h2>
                 {subText && (
                     <p style={{
-                        fontSize: 32, color: '#64748b', margin: '10px 0 0', fontWeight: 500,
+                        fontSize: 32, color: mainTextColor ? `${mainTextColor}cc` : '#64748b', margin: '10px 0 0', fontWeight: 500,
                         letterSpacing: '-0.5px'
                     }}>
                         {subText}

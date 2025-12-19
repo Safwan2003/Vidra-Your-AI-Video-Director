@@ -1,270 +1,346 @@
 import React, { useState } from 'react';
 import { VideoPlan, VideoScene } from '../types';
 import { SceneManagement } from './SceneManagement';
-import { TabbedSceneEditor } from './TabbedSceneEditor';
-import { ScenePreview } from './ScenePreview';
-import { Save, Undo, Redo, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
-import { generateVoiceover } from '../services/wanxService';
+import { SceneEditorForm } from './TabbedSceneEditor';
+import { Save, X, Settings, ArrowRight, Layers, Maximize2, Wand2, Image, Video, Music, User, Globe, Loader2, Sparkles, RefreshCw } from 'lucide-react';
+import { generateVoiceover, generateSceneVideo } from '../services/wanxService';
+import { SceneDetailModal } from './SceneDetailModal';
+import { SceneRefiner } from '../services/SceneRefiner';
 
 interface ContentEditorProps {
     plan: VideoPlan;
     onUpdate: (newPlan: VideoPlan) => void;
-    onClose: () => void;
+    currentSceneIndex: number;
+    onSceneSelect: (index: number) => void;
     className?: string;
 }
 
 export const ContentEditor: React.FC<ContentEditorProps> = ({
     plan,
     onUpdate,
-    onClose,
+    currentSceneIndex,
+    onSceneSelect,
     className
 }) => {
-    const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
-    const [history, setHistory] = useState<VideoPlan[]>([plan]);
-    const [historyIndex, setHistoryIndex] = useState(0);
     const [isRegenerating, setIsRegenerating] = useState(false);
-    const [showBrandSection, setShowBrandSection] = useState(true);
+    const [isRewriting, setIsRewriting] = useState<{ [key: string]: boolean }>({});
+    const [activeTab, setActiveTab] = useState<'content' | 'visual' | 'audio' | 'code'>('content');
 
-    // Undo/Redo Management
-    const pushHistory = (newPlan: VideoPlan) => {
-        const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push(newPlan);
-        setHistory(newHistory);
-        setHistoryIndex(newHistory.length - 1);
-        onUpdate(newPlan);
-    };
-
-    const undo = () => {
-        if (historyIndex > 0) {
-            const newIndex = historyIndex - 1;
-            setHistoryIndex(newIndex);
-            onUpdate(history[newIndex]);
-        }
-    };
-
-    const redo = () => {
-        if (historyIndex < history.length - 1) {
-            const newIndex = historyIndex + 1;
-            setHistoryIndex(newIndex);
-            onUpdate(history[newIndex]);
-        }
-    };
-
-    // Brand Updates
-    const handleBrandUpdate = (field: 'brandName' | 'brandColor', value: string) => {
-        const newPlan = { ...plan, [field]: value };
-        pushHistory(newPlan);
-    };
-
-    // Scene Updates
+    // Update Helpers
     const handleSceneUpdate = (updates: Partial<VideoScene>) => {
         const newScenes = [...plan.scenes];
         newScenes[currentSceneIndex] = { ...newScenes[currentSceneIndex], ...updates };
-        pushHistory({ ...plan, scenes: newScenes });
+        onUpdate({ ...plan, scenes: newScenes });
     };
 
-    // Scene Management
-    const handleAddScene = () => {
-        const newScene: VideoScene = {
-            id: plan.scenes.length + 1,
-            type: 'kinetic_typo' as any,
-            title: 'New Scene',
-            duration: 5,
-            mainText: '',
-            subText: '',
-            voiceoverScript: '',
-        };
-        pushHistory({ ...plan, scenes: [...plan.scenes, newScene] });
-        setCurrentSceneIndex(plan.scenes.length);
-    };
-
-    const handleDeleteScene = (index: number) => {
-        if (plan.scenes.length === 1) {
-            alert('Cannot delete the last scene');
-            return;
-        }
-        const newScenes = plan.scenes.filter((_, i) => i !== index);
-        pushHistory({ ...plan, scenes: newScenes });
-        if (currentSceneIndex >= newScenes.length) {
-            setCurrentSceneIndex(newScenes.length - 1);
-        }
-    };
-
-    const handleDuplicateScene = (index: number) => {
-        const sceneToDuplicate = { ...plan.scenes[index] };
-        sceneToDuplicate.id = plan.scenes.length + 1;
-        sceneToDuplicate.title = `${sceneToDuplicate.title} (Copy)`;
-        const newScenes = [
-            ...plan.scenes.slice(0, index + 1),
-            sceneToDuplicate,
-            ...plan.scenes.slice(index + 1),
-        ];
-        pushHistory({ ...plan, scenes: newScenes });
-    };
-
-    const handleMoveScene = (fromIndex: number, toIndex: number) => {
-        const newScenes = [...plan.scenes];
-        const [movedScene] = newScenes.splice(fromIndex, 1);
-        newScenes.splice(toIndex, 0, movedScene);
-        pushHistory({ ...plan, scenes: newScenes });
-        setCurrentSceneIndex(toIndex);
-    };
-
-    // Voiceover Regeneration
     const handleRegenerateVoice = async () => {
         const scene = plan.scenes[currentSceneIndex];
-        if (!scene.voiceoverScript) {
-            alert('Please add a voiceover script first');
-            return;
-        }
+        if (!scene.voiceoverScript) return alert('No script to generate voice for.');
 
         setIsRegenerating(true);
         try {
-            const voiceUrl = await generateVoiceover(scene.voiceoverScript);
-            if (voiceUrl) {
-                handleSceneUpdate({ voiceoverUrl: voiceUrl });
-            }
-        } catch (error) {
-            console.error('Voiceover generation failed:', error);
-            alert('Failed to generate voiceover. Please try again.');
+            const url = await generateVoiceover(scene.voiceoverScript);
+            if (url) handleSceneUpdate({ voiceoverUrl: url });
+        } catch (e) {
+            console.error(e);
+            alert('Voice generation failed.');
         } finally {
             setIsRegenerating(false);
         }
     };
 
-    const canUndo = historyIndex > 0;
-    const canRedo = historyIndex < history.length - 1;
-    const totalDuration = plan.scenes.reduce((acc, scene) => acc + (scene.duration || 5), 0);
+    const handleMagicRewrite = async (field: 'mainText' | 'subText') => {
+        const scene = plan.scenes[currentSceneIndex];
+        const textToRewrite = scene[field] || '';
+        if (!textToRewrite) return;
+
+        setIsRewriting(prev => ({ ...prev, [field]: true }));
+        try {
+            const rewritten = await SceneRefiner.rewriteText(textToRewrite);
+            handleSceneUpdate({ [field]: rewritten });
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsRewriting(prev => ({ ...prev, [field]: false }));
+        }
+    };
+
+    const handleRegenerateVideo = async () => {
+        const scene = plan.scenes[currentSceneIndex];
+        const prompt = scene.wanPrompt || scene.visualDescription;
+        if (!prompt) return alert('No visual description to generate video from.');
+
+        setIsRegenerating(true);
+        try {
+            const url = await generateSceneVideo(prompt);
+            if (url) handleSceneUpdate({ videoUrl: url });
+        } catch (e) {
+            console.error(e);
+            alert('Video generation failed.');
+        } finally {
+            setIsRegenerating(false);
+        }
+    };
+
+    const scene = plan.scenes[currentSceneIndex];
 
     return (
-        <div className={`fixed inset-0 bg-slate-950 z-50 overflow-hidden ${className}`}>
-            <div className="h-full flex flex-col">
-                {/* Premium Header */}
-                <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700/50 px-8 py-5 shadow-2xl">
-                    <div className="flex items-center justify-between max-w-[1800px] mx-auto">
-                        <div className="flex items-center gap-4">
-                            <div className="p-2.5 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg shadow-indigo-500/30 animate-pulse">
-                                <Sparkles className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-bold bg-gradient-to-r from-white via-indigo-100 to-purple-100 bg-clip-text text-transparent">
-                                    Director Studio
-                                </h2>
-                                <p className="text-xs text-slate-400 font-medium">{plan.scenes.length} scenes • {totalDuration}s total</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={undo}
-                                disabled={!canUndo}
-                                className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all backdrop-blur-sm"
-                                title="Undo"
-                            >
-                                <Undo size={18} />
-                            </button>
-                            <button
-                                onClick={redo}
-                                disabled={!canRedo}
-                                className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all backdrop-blur-sm"
-                                title="Redo"
-                            >
-                                <Redo size={18} />
-                            </button>
-
-                            <div className="w-px h-6 bg-slate-700/50" />
-
-                            <button
-                                onClick={onClose}
-                                className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 text-white rounded-xl transition-all shadow-lg shadow-purple-500/30 flex items-center gap-2 font-semibold"
-                            >
-                                <Save size={18} />
-                                Save & Close
-                            </button>
-                        </div>
+        <div className={`flex flex-col h-full bg-slate-950/50 backdrop-blur-xl ${className}`}>
+            {/* Context Header */}
+            <div className="p-6 border-b border-white/5 bg-white/[0.02]">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                        <h2 className="text-xs font-bold text-white uppercase tracking-widest">Scene Properties</h2>
                     </div>
+                    <span className="text-[10px] font-bold text-slate-500 bg-white/5 px-2 py-1 rounded border border-white/5">
+                        #{currentSceneIndex + 1}
+                    </span>
                 </div>
 
-                {/* Main Content - Optimized for Laptop */}
-                <div className="flex-1 flex overflow-hidden max-w-[1800px] mx-auto w-full">
-                    {/* Left Sidebar - 340px for better proportions */}
-                    <div className="w-[340px] bg-gradient-to-b from-slate-900 to-slate-950 border-r border-slate-800/50 flex flex-col shadow-2xl">
-                        {/* Brand Section */}
-                        <div className="border-b border-slate-800/50">
-                            <button
-                                onClick={() => setShowBrandSection(!showBrandSection)}
-                                className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-800/30 transition-all"
-                            >
-                                <span className="text-sm font-bold text-white">Brand Settings</span>
-                                {showBrandSection ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-                            </button>
+                {/* Tab Switcher */}
+                <div className="flex p-1 bg-slate-900/50 rounded-xl border border-white/5">
+                    {(['content', 'visual', 'audio', 'code'] as const).map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === tab
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                                : 'text-slate-500 hover:text-slate-300'
+                                }`}
+                        >
+                            {tab}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
-                            {showBrandSection && (
-                                <div className="px-6 pb-6 space-y-4">
-                                    <div>
-                                        <label className="text-xs text-slate-400 block mb-2 font-medium">Brand Name</label>
+            {/* Scrollable Editor Area */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin scrollbar-thumb-white/10">
+                {activeTab === 'content' && (
+                    <div className="animate-in fade-in slide-in-from-right-2 duration-300 space-y-6">
+                        <section>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Copy & Headlines</label>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between ml-1">
+                                        <label className="text-xs text-slate-400 font-medium">Main Headline</label>
+                                        <button
+                                            onClick={() => handleMagicRewrite('mainText')}
+                                            disabled={isRewriting['mainText']}
+                                            className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-bold uppercase transition-colors"
+                                        >
+                                            {isRewriting['mainText'] ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                                            Magic Rewrite
+                                        </button>
+                                    </div>
+                                    <input
+                                        value={scene.mainText || ''}
+                                        onChange={e => handleSceneUpdate({ mainText: e.target.value })}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all"
+                                        placeholder="Enter headline..."
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between ml-1">
+                                        <label className="text-xs text-slate-400 font-medium">Subtext / Description</label>
+                                        <button
+                                            onClick={() => handleMagicRewrite('subText')}
+                                            disabled={isRewriting['subText']}
+                                            className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-bold uppercase transition-colors"
+                                        >
+                                            {isRewriting['subText'] ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                                            Magic Rewrite
+                                        </button>
+                                    </div>
+                                    <textarea
+                                        value={scene.subText || ''}
+                                        onChange={e => handleSceneUpdate({ subText: e.target.value })}
+                                        rows={3}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all resize-none"
+                                        placeholder="Enter subtext..."
+                                    />
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="pt-6 border-t border-white/5">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Scene Configuration</label>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs text-slate-400 font-medium ml-1">Duration (sec)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        min="0.5"
+                                        value={scene.duration}
+                                        onChange={e => handleSceneUpdate({ duration: Math.max(0.5, Number(e.target.value)) })}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs text-slate-400 font-medium ml-1">Scene Title</label>
+                                    <input
+                                        value={scene.title}
+                                        onChange={e => handleSceneUpdate({ title: e.target.value })}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                )}
+
+                {activeTab === 'visual' && (
+                    <div className="animate-in fade-in slide-in-from-right-2 duration-300 space-y-6">
+                        <section>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Principal Assets</label>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs text-slate-400 font-medium ml-1 flex items-center gap-2">
+                                        <Image size={12} className="text-indigo-400" />
+                                        Main Screenshot URL
+                                    </label>
+                                    <input
+                                        value={scene.screenshotUrl || ''}
+                                        onChange={e => handleSceneUpdate({ screenshotUrl: e.target.value })}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-mono text-slate-300 focus:border-indigo-500 outline-none"
+                                        placeholder="https://..."
+                                    />
+                                </div>
+                                {scene.mobileScreenshotUrl !== undefined && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 font-medium ml-1 flex items-center gap-2">
+                                            <Globe size={12} className="text-emerald-400" />
+                                            Mobile App View
+                                        </label>
                                         <input
-                                            type="text"
-                                            value={plan.brandName || ''}
-                                            onChange={(e) => handleBrandUpdate('brandName', e.target.value)}
-                                            className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all backdrop-blur-sm"
-                                            placeholder="Enter brand name..."
+                                            value={scene.mobileScreenshotUrl || ''}
+                                            onChange={e => handleSceneUpdate({ mobileScreenshotUrl: e.target.value })}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-mono text-slate-300 focus:border-indigo-500 outline-none"
+                                            placeholder="https://..."
                                         />
                                     </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="pt-6 border-t border-white/5">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Cinematic Background</label>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs text-slate-400 font-medium ml-1">Wan 2.1 AI Prompt</label>
+                                    <textarea
+                                        value={scene.wanPrompt || scene.visualDescription || ''}
+                                        onChange={e => handleSceneUpdate({ wanPrompt: e.target.value })}
+                                        rows={3}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all resize-none"
+                                        placeholder="Describe the background scene..."
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleRegenerateVideo}
+                                    disabled={isRegenerating}
+                                    className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl border border-white/5 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
+                                    {isRegenerating ? <Loader2 size={14} className="animate-spin" /> : <Video size={14} />}
+                                    Regenerate AI Background
+                                </button>
+                                {scene.videoUrl && (
+                                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                        <span className="text-[10px] font-bold text-emerald-400 uppercase">AI Video Background Active</span>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    </div>
+                )}
+
+                {activeTab === 'audio' && (
+                    <div className="animate-in fade-in slide-in-from-right-2 duration-300 space-y-6">
+                        <section>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Voice Configuration</label>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs text-slate-400 font-medium ml-1 flex items-center gap-2">
+                                        <User size={12} className="text-indigo-400" />
+                                        Artist / Voice Model
+                                    </label>
+                                    <select
+                                        value={scene.voice || 'en-US-ChristopherNeural'}
+                                        onChange={e => handleSceneUpdate({ voice: e.target.value })}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none appearance-none cursor-pointer"
+                                    >
+                                        <option value="en-US-ChristopherNeural">Christopher (Professional)</option>
+                                        <option value="en-US-EricNeural">Eric (Energetic)</option>
+                                        <option value="en-US-AvaNeural">Ava (Friendly)</option>
+                                        <option value="en-GB-SoniaNeural">Sonia (British / Sophisticated)</option>
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs text-slate-400 font-medium ml-1">Voiceover Script</label>
+                                    <textarea
+                                        value={scene.voiceoverScript || ''}
+                                        onChange={e => handleSceneUpdate({ voiceoverScript: e.target.value })}
+                                        rows={6}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm font-mono text-indigo-200 focus:border-indigo-500 outline-none transition-all leading-relaxed"
+                                        placeholder="Write the script for the AI to speak..."
+                                    />
+                                    <button
+                                        onClick={handleRegenerateVoice}
+                                        disabled={isRegenerating}
+                                        className="w-full mt-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {isRegenerating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                                        {isRegenerating ? 'Generating...' : 'Record AI Voiceover'}
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="pt-6 border-t border-white/5">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Background Score</label>
+                            <div className="p-4 bg-slate-900/50 rounded-xl border border-white/5 flex items-center justify-between group hover:border-indigo-500/30 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400">
+                                        <Music size={18} />
+                                    </div>
                                     <div>
-                                        <label className="text-xs text-slate-400 block mb-2 font-medium">Brand Color</label>
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="color"
-                                                value={plan.brandColor || '#3498db'}
-                                                onChange={(e) => handleBrandUpdate('brandColor', e.target.value)}
-                                                className="w-12 h-11 rounded-xl cursor-pointer border-2 border-slate-700/50 shadow-lg"
-                                            />
-                                            <input
-                                                type="text"
-                                                value={plan.brandColor || '#3498db'}
-                                                onChange={(e) => handleBrandUpdate('brandColor', e.target.value)}
-                                                className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono backdrop-blur-sm"
-                                            />
-                                        </div>
+                                        <p className="text-xs font-bold text-white">Corporate Upbeat</p>
+                                        <p className="text-[10px] text-slate-500 uppercase">Standard License</p>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Scene List */}
-                        <div className="flex-1 overflow-hidden">
-                            <SceneManagement
-                                scenes={plan.scenes}
-                                currentSceneIndex={currentSceneIndex}
-                                onSceneSelect={setCurrentSceneIndex}
-                                onAddScene={handleAddScene}
-                                onDeleteScene={handleDeleteScene}
-                                onDuplicateScene={handleDuplicateScene}
-                                onMoveScene={handleMoveScene}
-                            />
-                        </div>
+                                <button className="p-2 text-slate-500 hover:text-white transition-colors">
+                                    <Settings size={16} />
+                                </button>
+                            </div>
+                        </section>
                     </div>
+                )}
 
-                    {/* Right Panel - Scene Editor with Live Preview */}
-                    <div className="flex-1 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-y-auto">
-                        <div className="p-10 max-w-5xl space-y-6">
-                            {/* Live Preview */}
-                            <ScenePreview
-                                scene={plan.scenes[currentSceneIndex]}
-                                sceneIndex={currentSceneIndex}
-                                brandColor={plan.brandColor}
-                            />
-
-                            {/* Scene Editor */}
-                            <TabbedSceneEditor
-                                scene={plan.scenes[currentSceneIndex]}
-                                sceneIndex={currentSceneIndex}
-                                onUpdate={handleSceneUpdate}
-                                onRegenerateVoice={isRegenerating ? undefined : handleRegenerateVoice}
-                            />
-                        </div>
+                {activeTab === 'code' && (
+                    <div className="h-full animate-in fade-in slide-in-from-right-2 duration-300">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Scene JSON (God Mode)</label>
+                        <textarea
+                            value={JSON.stringify(scene, null, 2)}
+                            onChange={e => {
+                                try {
+                                    handleSceneUpdate(JSON.parse(e.target.value));
+                                } catch (err) { }
+                            }}
+                            className="w-full h-[500px] bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-mono text-emerald-400 focus:border-emerald-500 outline-none transition-all"
+                        />
                     </div>
+                )}
+            </div>
+
+            {/* Footer Status */}
+            <div className="p-6 border-t border-white/5 bg-white/[0.01] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Save size={14} className="text-slate-500" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Changes Auto-saved</span>
                 </div>
             </div>
         </div>

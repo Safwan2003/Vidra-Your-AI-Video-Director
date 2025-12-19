@@ -3,14 +3,20 @@ import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate } fr
 
 interface PretaaSlot7OutroProps {
     ctaText?: string;
+    ctaUrl?: string; // Target URL
     screenshotUrl?: string;
     mobileScreenshotUrl?: string;
+    backgroundColor?: string;
+    mainTextColor?: string;
 }
 
 export const PretaaSlot7Outro: React.FC<PretaaSlot7OutroProps> = ({
     ctaText = 'Get Started',
+    ctaUrl,
     screenshotUrl,
-    mobileScreenshotUrl
+    mobileScreenshotUrl,
+    backgroundColor,
+    mainTextColor
 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
@@ -25,7 +31,7 @@ export const PretaaSlot7Outro: React.FC<PretaaSlot7OutroProps> = ({
     const desktopFloat = Math.sin((frame + 15) / 30) * 6;
 
     return (
-        <AbsoluteFill style={{ backgroundColor: '#1e293b' }}>
+        <AbsoluteFill style={{ backgroundColor: backgroundColor || '#1e293b' }}>
             {/* Gradient Background */}
             <div
                 style={{
@@ -285,17 +291,32 @@ export const PretaaSlot7Outro: React.FC<PretaaSlot7OutroProps> = ({
                     transform: `translateX(-50%) translateY(${(1 - entrance) * 20}px)`,
                     opacity: entrance,
                     textAlign: 'center',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16
                 }}
             >
                 <h2 style={{
                     fontSize: 48,
                     fontWeight: 900,
-                    color: 'white',
+                    color: mainTextColor || 'white',
                     margin: 0,
                     textShadow: '0 4px 20px rgba(59, 130, 246, 0.4)',
                 }}>
                     {ctaText}
                 </h2>
+                {ctaUrl && (
+                    <div style={{
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        padding: '8px 20px',
+                        borderRadius: 20,
+                        color: '#94a3b8',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        letterSpacing: '0.5px'
+                    }}>
+                        {ctaUrl}
+                    </div>
+                )}
             </div>
         </AbsoluteFill>
     );

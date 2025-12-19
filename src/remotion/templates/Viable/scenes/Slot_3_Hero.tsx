@@ -20,9 +20,11 @@ const GlassCard = ({ children, style, className, blur = 20, opacity = 0.85, bord
 interface Slot3HeroProps {
     productName?: string;
     accentColor?: string;
-    screenUrl?: string; // INPUT: Dynamic Screenshot
+    screenUrl?: string; // Legacy
+    screenshotUrl?: string; // Standardized
     title?: string;
     stats?: { label: string; value: string; suffix?: string; isPrimary?: boolean }[];
+    features?: Array<{ title: string; description: string; }>; // From Editor
 }
 
 // --- Sub-Components ---
@@ -117,13 +119,14 @@ const AdvancedChart = ({ width, height, color, delay }: { width: number, height:
     );
 };
 
-
 // --- Main Component ---
 export const Slot3Hero: React.FC<Slot3HeroProps> = ({
     accentColor = '#8b5cf6', // Violet default
     screenUrl,
+    screenshotUrl,
     title = "Inaccurate & delayed notifications",
-    stats
+    stats,
+    features
 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
@@ -134,10 +137,19 @@ export const Slot3Hero: React.FC<Slot3HeroProps> = ({
     const tiltX = interpolate(frame, [0, 150], [2, 1], { easing: Easing.inOut(Easing.sin) });
     const shadowOpacity = interpolate(frame, [0, 30], [0, 0.5]);
 
-    const hasScreen = screenUrl && screenUrl.length > 5;
+    const activeScreenUrl = screenshotUrl || screenUrl;
+    const hasScreen = activeScreenUrl && activeScreenUrl.length > 5;
+
+    // Map features to stats if provided
+    const featureStats = features?.map(f => ({
+        label: f.description,
+        value: f.title.replace(/\D/g, ''), // Try to extract number from title if possible, or just use title
+        suffix: f.title.replace(/\d/g, ''), // Extract suffix
+        isPrimary: false
+    }));
 
     // Default Stats if none provided
-    const displayStats = stats || [
+    const displayStats = featureStats || stats || [
         { label: 'Datapoints Analyzed', value: '116', isPrimary: false },
         { label: 'Above Average', value: '22', suffix: '.0%', isPrimary: false },
     ];
@@ -210,7 +222,7 @@ export const Slot3Hero: React.FC<Slot3HeroProps> = ({
                         {hasScreen ? (
                             <div style={{ width: '100%', height: '100%' }}>
                                 <Img
-                                    src={screenUrl}
+                                    src={activeScreenUrl}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
                                 />
                                 {/* Overlay Cursor Animation would go here */}

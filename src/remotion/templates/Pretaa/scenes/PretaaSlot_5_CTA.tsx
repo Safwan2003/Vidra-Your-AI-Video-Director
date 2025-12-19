@@ -76,7 +76,15 @@ const JourneyCard = ({ x, y, text, title, sub, delay, direction = 'top' }: any) 
     );
 };
 
-export const PretaaSlot5CTA = ({ title }: { title?: string }) => {
+export const PretaaSlot5CTA = ({
+    title,
+    backgroundColor,
+    mainTextColor
+}: {
+    title?: string,
+    backgroundColor?: string,
+    mainTextColor?: string
+}) => {
     const frame = useCurrentFrame();
 
     // Path Points (Scaled to match 5(10).jpg wave)
@@ -93,7 +101,7 @@ export const PretaaSlot5CTA = ({ title }: { title?: string }) => {
     const m2 = getBezierPoint(0.65, p0, p1, p2, p3); // Acquired
 
     return (
-        <AbsoluteFill style={{ background: '#f8fafc', overflow: 'hidden' }}>
+        <AbsoluteFill style={{ background: backgroundColor || '#f8fafc', overflow: 'hidden' }}>
             {/* Ambient Gradients - Blue/Red spots */}
             <div style={{ position: 'absolute', top: -200, left: -200, width: 800, height: 800, background: 'rgba(239, 68, 68, 0.05)', filter: 'blur(100px)', borderRadius: '50%' }} />
             <div style={{ position: 'absolute', bottom: -200, right: -200, width: 1000, height: 1000, background: 'rgba(59, 130, 246, 0.05)', filter: 'blur(100px)', borderRadius: '50%' }} />

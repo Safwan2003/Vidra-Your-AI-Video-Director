@@ -1,7 +1,17 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, Img } from 'remotion';
 
-export const PretaaSlot6Review = ({ quote, author }: { quote?: string, author?: string }) => {
+export const PretaaSlot6Review = ({
+    quote,
+    author,
+    backgroundColor,
+    mainTextColor
+}: {
+    quote?: string,
+    author?: string,
+    backgroundColor?: string,
+    mainTextColor?: string
+}) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
 
@@ -15,7 +25,7 @@ export const PretaaSlot6Review = ({ quote, author }: { quote?: string, author?: 
 
     return (
         <AbsoluteFill style={{
-            background: '#0f172a', // Deep Dark Blue
+            background: backgroundColor || '#0f172a', // Deep Dark Blue
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden'
         }}>
@@ -38,7 +48,7 @@ export const PretaaSlot6Review = ({ quote, author }: { quote?: string, author?: 
             }}>
                 <div style={{ fontSize: 100, color: '#3b82f6', marginBottom: -20, fontFamily: 'serif' }}>“</div>
                 <h2 style={{
-                    fontSize: 50, color: 'white', fontWeight: 600, fontStyle: 'italic',
+                    fontSize: 50, color: mainTextColor || 'white', fontWeight: 600, fontStyle: 'italic',
                     lineHeight: 1.4, margin: '20px 0'
                 }}>
                     {quote || "This product completely transformed our workflow. Highly recommended!"}

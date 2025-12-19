@@ -29,8 +29,17 @@ export const PretaaSlot3Solution = ({
     solutionText = "Solution",
     tagline = "The Solution Is Here",
     accentColor = "#1e1b4b",
-    screenshotUrl
-}: { solutionText?: string, tagline?: string, accentColor?: string, screenshotUrl?: string }) => {
+    screenshotUrl,
+    backgroundColor,
+    mainTextColor
+}: {
+    solutionText?: string,
+    tagline?: string,
+    accentColor?: string,
+    screenshotUrl?: string,
+    backgroundColor?: string,
+    mainTextColor?: string
+}) => {
     const frame = useCurrentFrame();
 
     // Split text for animation
@@ -38,7 +47,7 @@ export const PretaaSlot3Solution = ({
 
     return (
         <AbsoluteFill style={{
-            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+            background: backgroundColor || 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
             overflow: 'hidden'
         }}>
             {/* Background Ambience */}
@@ -56,7 +65,7 @@ export const PretaaSlot3Solution = ({
                 textAlign: 'center', zIndex: 10, position: 'absolute', top: '10%', width: '100%'
             }}>
                 <h1 style={{
-                    fontSize: 100, fontWeight: 800, color: accentColor,
+                    fontSize: 100, fontWeight: 800, color: mainTextColor || accentColor,
                     margin: 0, letterSpacing: '-4px', fontFamily: 'sans-serif',
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
@@ -66,7 +75,7 @@ export const PretaaSlot3Solution = ({
                             letter={char}
                             index={i}
                             delay={10 + i * 4}
-                            color={accentColor}
+                            color={mainTextColor || accentColor}
                         />
                     ))}
                 </h1>

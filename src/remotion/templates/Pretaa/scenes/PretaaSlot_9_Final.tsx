@@ -6,13 +6,17 @@ interface PretaaSlot9FinalProps {
     brandColor?: string;
     ctaText?: string;
     domain?: string;
+    backgroundColor?: string;
+    mainTextColor?: string;
 }
 
 export const PretaaSlot_9_Final: React.FC<PretaaSlot9FinalProps> = ({
     brandName = 'pretaa',
     brandColor = '#3b82f6',
     ctaText = 'Contact Us Today',
-    domain = 'pretaa.com'
+    domain = 'pretaa.com',
+    backgroundColor,
+    mainTextColor
 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
@@ -32,7 +36,7 @@ export const PretaaSlot_9_Final: React.FC<PretaaSlot9FinalProps> = ({
     const pulse = Math.sin(frame / 30) * 0.03 + 1;
 
     return (
-        <AbsoluteFill style={{ backgroundColor: '#f8fafc' }}>
+        <AbsoluteFill style={{ backgroundColor: backgroundColor || '#f8fafc' }}>
             {/* Background Gradients from Ref */}
             <div
                 style={{
@@ -79,7 +83,7 @@ export const PretaaSlot_9_Final: React.FC<PretaaSlot9FinalProps> = ({
                     <h1 style={{
                         fontSize: 120,
                         fontWeight: 900,
-                        color: '#1e1b4b', // Dark navy text from ref
+                        color: mainTextColor || '#1e1b4b', // Dark navy text from ref
                         letterSpacing: '-0.05em',
                         lineHeight: 1,
                         margin: 0,

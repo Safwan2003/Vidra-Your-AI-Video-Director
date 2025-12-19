@@ -172,10 +172,18 @@ const ChatBubble = ({ x, y, text, delay, direction = 'left', active = false }: a
     );
 };
 
-export const PretaaSlot1Intro = ({ title }: { title?: string }) => {
+export const PretaaSlot1Intro = ({
+    title,
+    backgroundColor,
+    mainTextColor
+}: {
+    title?: string,
+    backgroundColor?: string,
+    mainTextColor?: string
+}) => {
     return (
         <AbsoluteFill style={{
-            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+            background: backgroundColor || 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
             overflow: 'hidden'
         }}>
             <AbsoluteFill>
@@ -223,7 +231,7 @@ export const PretaaSlot1Intro = ({ title }: { title?: string }) => {
                 <h1 style={{
                     fontSize: 120,
                     fontWeight: 900,
-                    color: '#0f172a',
+                    color: mainTextColor || '#0f172a',
                     letterSpacing: '-0.04em',
                     textShadow: '0 4px 30px rgba(0,0,0,0.1)',
                     margin: 0,

@@ -12,7 +12,9 @@ import { Player as RemotionPlayer } from '@remotion/player';
 import { MainVideo } from './src/remotion/compositions/MainVideo';
 import { ContentEditor } from './components/ContentEditor';
 import { dbService, SavedProject } from './services/dbService';
-import { Edit, Save, RefreshCw, Download, Wand2, ArrowRight, Zap, MonitorPlay, Presentation, Upload, ImagePlus, Sparkles } from 'lucide-react';
+import { Edit, Save, RefreshCw, Download, Wand2, ArrowRight, Zap, MonitorPlay, Presentation, Upload, ImagePlus, Sparkles, Layout, Smartphone, MousePointer2, MessageSquare, Grid, PlayCircle, PauseCircle, Layers, Plus, Loader2, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { StudioHeader } from './components/StudioHeader';
+import { SceneRefiner } from './services/SceneRefiner';
 
 const INITIAL_LOGS: LogMessage[] = [
     { id: '1', text: 'Vidra Agent v2.5 initialized...', type: 'info' },
@@ -72,6 +74,8 @@ export default function App() {
     const [activeSceneIndex, setActiveSceneIndex] = useState(0);
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [directorPrompt, setDirectorPrompt] = useState('');
+    const [isDirectorWorking, setIsDirectorWorking] = useState(false);
 
     // Hardcoded settings from env as per user request
     const appSettings = {
@@ -245,7 +249,7 @@ export default function App() {
 
     const calculatedDuration = isTemplateMode
         ? templateDuration
-        : (validPlan ? Math.floor(plan.scenes.reduce((acc, s) => acc + (s.duration || 0), 0) * 30) : 0);
+        : (validPlan ? Math.floor(plan.scenes.reduce((acc, s) => acc + Math.max(0.1, s.duration || 0), 0) * 30) : 0);
 
     const totalDurationInFrames = Math.max(1, calculatedDuration);
 
@@ -309,6 +313,56 @@ export default function App() {
         } catch (e) {
             console.error(e);
             addLog('Export failed. Check console.', 'error');
+        }
+    };
+
+    const handleDirectorDeploy = async () => {
+        if (!plan || !directorPrompt.trim()) return;
+
+        setIsDirectorWorking(true);
+        const isGlobal = ['plan', 'all', 'entire', 'video', 'replan', 'structure', 'theme', 'color scheme', 'brand'].some(word =>
+            directorPrompt.toLowerCase().includes(word)
+        );
+
+        addLog(`AI Director: Analyzing ${isGlobal ? 'Global' : 'Scene'} instruction "${directorPrompt}"...`, 'process');
+
+        try {
+            if (isGlobal) {
+                const updatedPlan = await SceneRefiner.refinePlan(plan, directorPrompt);
+                setPlan(updatedPlan);
+                addLog('AI Director: Video plan successfully updated.', 'success');
+            } else {
+                const currentScene = plan.scenes[activeSceneIndex];
+                const updatedScene = await SceneRefiner.refine(currentScene, directorPrompt);
+                const newPlan = { ...plan };
+                newPlan.scenes[activeSceneIndex] = updatedScene;
+                setPlan(newPlan);
+                addLog('AI Director: Scene successfully refined.', 'success');
+            }
+            setDirectorPrompt('');
+        } catch (error) {
+            console.error(error);
+            addLog('AI Director: Failed to execute command.', 'error');
+        } finally {
+            setIsDirectorWorking(false);
+        }
+    };
+
+    const moveScene = (from: number, to: number) => {
+        if (!plan || to < 0 || to >= plan.scenes.length) return;
+        const newScenes = [...plan.scenes];
+        const [moved] = newScenes.splice(from, 1);
+        newScenes.splice(to, 0, moved);
+        setPlan({ ...plan, scenes: newScenes });
+        setActiveSceneIndex(to);
+    };
+
+    const deleteScene = (idx: number) => {
+        if (!plan || plan.scenes.length <= 1) return;
+        const newScenes = plan.scenes.filter((_, i) => i !== idx);
+        setPlan({ ...plan, scenes: newScenes });
+        if (activeSceneIndex >= newScenes.length) {
+            setActiveSceneIndex(newScenes.length - 1);
         }
     };
 
@@ -538,187 +592,171 @@ export default function App() {
                         </div>
                     )}
 
-                    {/* EDITOR STATE */}
+                    {/* EDITOR STATE (STUDIO MODE) */}
                     {state === AppState.EDITOR && plan && (
-                        <div className="flex-1 w-full h-full">
-                            {/* Split Screen Container */}
-                            <div className="flex h-[calc(100vh-80px)] overflow-hidden">
+                        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 animate-in fade-in duration-500">
+                            {/* Unified Studio Header */}
+                            <StudioHeader
+                                brandName={plan.brandName || 'Untitled Project'}
+                                sceneCount={plan.scenes.length}
+                                onExport={handleExport}
+                                onBack={() => setState(AppState.TEMPLATE_SELECTION)}
+                                isExporting={isRegenerating}
+                            />
 
-                                {/* Main Content Area (Player) */}
-                                <main className={`flex-1 transition-all duration-300 flex flex-col overflow-y-auto p-4 md:p-8 ${isEditing ? 'mr-[400px]' : ''}`}>
-                                    <div className="max-w-7xl mx-auto w-full space-y-6 animate-fade-in relative z-10">
+                            <div className="flex-1 flex overflow-hidden">
+                                {/* PANE 1: Vertical Scene Strip (Left) */}
+                                <div className="w-20 border-r border-white/5 bg-slate-950 flex flex-col items-center py-6 gap-6 overflow-y-auto scrollbar-none relative">
+                                    <div className="flex flex-col items-center gap-1 opacity-40 hover:opacity-100 transition-opacity cursor-default mb-2">
+                                        <Layers size={14} className="text-white" />
+                                        <span className="text-[8px] font-bold text-white uppercase tracking-widest">Scenes</span>
+                                    </div>
 
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h2 className="text-2xl font-bold text-white">{plan.brandName || 'Project Preview'}</h2>
-                                                <p className="text-slate-400">{plan.scenes.length} Scenes • {appSettings.model}</p>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <Button
-                                                    variant="primary"
-                                                    onClick={() => setIsEditing(true)}
-                                                    icon={<Sparkles size={16} />}
-                                                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 border-none"
-                                                >
-                                                    Open Director Studio
-                                                </Button>
-
-                                                <Button
-                                                    variant="secondary"
-                                                    onClick={handleGenerateBackground}
-                                                    disabled={isRegenerating}
-                                                    icon={<ImagePlus size={16} />}
-                                                    className="hidden md:flex bg-slate-800 border-slate-700 hover:bg-slate-700"
-                                                >
-                                                    {isRegenerating ? 'Generating...' : 'Regen BG'}
-                                                </Button>
-
-                                                <Button
-                                                    onClick={handleExport}
-                                                    icon={<Download size={16} />}
-                                                    disabled={isRegenerating}
-                                                    className="bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-lg shadow-emerald-500/20"
-                                                >
-                                                    Export Video
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid lg:grid-cols-3 gap-8">
-                                            <div className="lg:col-span-2 space-y-6">
-                                                {/* Main Remotion Player */}
-                                                <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-2xl ring-1 ring-slate-700 relative group">
-                                                    <RemotionPlayer
-                                                        key={`player-${plan.scenes.map(s => `${s.id}-${s.duration}-${s.title}`).join('-')}`}
-                                                        ref={playerRef}
-                                                        component={MainVideo}
-                                                        inputProps={{ plan }}
-                                                        durationInFrames={totalDurationInFrames}
-                                                        compositionWidth={1920}
-                                                        compositionHeight={1080}
-                                                        fps={30}
-                                                        style={{ width: '100%', height: '100%' }}
-                                                        controls
-                                                        autoPlay
-                                                        loop
-                                                        acknowledgeRemotionLicense
-                                                        numberOfSharedAudioTags={20} // Fix for AudioController concurrency
-                                                    />
-                                                </div>
-
-                                                {/* Timeline / Scenes - Simplified Horizontal Scroll */}
-                                                <div className="relative">
-                                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Scene Timeline</h3>
-                                                    <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
-                                                        {plan.scenes && Array.isArray(plan.scenes) && plan.scenes.map((scene, idx) => (
-                                                            <div
-                                                                key={`${scene.id}-${idx}`}
-                                                                className={`flex-shrink-0 w-32 rounded-lg border cursor-pointer transition-all overflow-hidden ${idx === activeSceneIndex
-                                                                    ? 'border-indigo-500 ring-2 ring-indigo-500/50 shadow-lg shadow-indigo-500/20'
-                                                                    : 'border-slate-700 hover:border-slate-600'
-                                                                    }`}
-                                                                onClick={() => {
-                                                                    setActiveSceneIndex(idx);
-                                                                    if (playerRef.current) {
-                                                                        const startFrame = plan.scenes.slice(0, idx).reduce((acc, s) => acc + (s.duration * 30), 0);
-                                                                        playerRef.current.seekTo(startFrame);
-                                                                    }
-                                                                }}
-                                                            >
-                                                                {/* Compact Visual Preview */}
-                                                                <div className="aspect-video bg-slate-900 relative overflow-hidden">
-                                                                    {scene.videoUrl ? (
-                                                                        <video
-                                                                            src={scene.videoUrl}
-                                                                            className="w-full h-full object-cover"
-                                                                            muted
-                                                                            playsInline
-                                                                        />
-                                                                    ) : (
-                                                                        <div
-                                                                            className="w-full h-full flex items-center justify-center text-2xl"
-                                                                            style={{
-                                                                                background: `linear-gradient(135deg, ${plan.brandColor}50, ${plan.brandColor}20)`
-                                                                            }}
-                                                                        >
-                                                                            {scene.type === 'kinetic_text' && '📝'}
-                                                                            {scene.type === 'device_showcase' && '📱'}
-                                                                            {scene.type === 'bento_grid' && '▦'}
-                                                                            {scene.type === 'social_proof' && '⭐'}
-                                                                            {scene.type === 'cta_finale' && '🎯'}
-                                                                            {scene.type === 'isometric_illustration' && '🎨'}
-                                                                            {scene.type === 'slot_transition' && '✨'}
-                                                                            {scene.type === 'kinetic_typo' && '✍️'}
-                                                                            {scene.type === 'flat_screenshot' && '🖼️'}
-                                                                            {!['kinetic_text', 'device_showcase', 'bento_grid', 'social_proof', 'cta_finale', 'isometric_illustration', 'slot_transition', 'kinetic_typo', 'flat_screenshot'].includes(scene.type) && '🎬'}
-                                                                        </div>
-                                                                    )}
-                                                                    {/* Scene Number */}
-                                                                    <div className="absolute top-1 left-1 bg-black/80 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold text-white">
-                                                                        {idx + 1}
-                                                                    </div>
-                                                                    {/* Duration */}
-                                                                    <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur-sm px-1.5 py-0.5 rounded text-[9px] font-bold text-emerald-400">
-                                                                        {scene.duration}s
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Compact Info */}
-                                                                <div className="p-2 bg-slate-800/50">
-                                                                    <p className="text-[10px] font-semibold text-white truncate">{scene.title}</p>
-                                                                    <p className="text-[8px] text-slate-500 uppercase truncate">{scene.type.replace(/_/g, ' ')}</p>
-                                                                </div>
-                                                            </div>
-                                                        ))}
+                                    {plan.scenes.map((scene, idx) => {
+                                        const isActive = idx === activeSceneIndex;
+                                        return (
+                                            <button
+                                                key={`${scene.id}-${idx}`}
+                                                onClick={() => seekToScene(idx)}
+                                                className={`group relative w-12 aspect-[9/16] rounded-xl overflow-hidden border-2 transition-all duration-300 ${isActive
+                                                    ? 'border-indigo-500 ring-4 ring-indigo-500/20 scale-110 z-10 shadow-[0_0_20px_rgba(99,102,241,0.3)]'
+                                                    : 'border-slate-800 hover:border-slate-600 grayscale hover:grayscale-0'
+                                                    }`}
+                                            >
+                                                {scene.videoUrl ? (
+                                                    <video src={scene.videoUrl} className="w-full h-full object-cover" muted />
+                                                ) : (
+                                                    <div className="w-full h-full bg-slate-900 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                                        {idx + 1}
                                                     </div>
+                                                )}
+                                                <div className="absolute inset-x-0 bottom-0 p-1 bg-gradient-to-t from-black/80 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex items-center justify-center gap-1">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); moveScene(idx, idx - 1); }}
+                                                        disabled={idx === 0}
+                                                        className="p-1 hover:bg-white/20 rounded disabled:opacity-20"
+                                                    >
+                                                        <ChevronUp size={10} className="text-white" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); deleteScene(idx); }}
+                                                        className="p-1 hover:bg-red-500/40 rounded"
+                                                    >
+                                                        <Trash2 size={10} className="text-red-400" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); moveScene(idx, idx + 1); }}
+                                                        disabled={idx === plan.scenes.length - 1}
+                                                        className="p-1 hover:bg-white/20 rounded disabled:opacity-20"
+                                                    >
+                                                        <ChevronDown size={10} className="text-white" />
+                                                    </button>
                                                 </div>
-                                            </div>
 
-                                            {/* Stats (Desktop) */}
-                                            <div className="hidden lg:block space-y-6">
-                                                <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                                                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Project Details</h3>
-                                                    <div className="space-y-4">
-                                                        <div>
-                                                            <label className="text-xs text-slate-500">Brand Identity</label>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <div
-                                                                    className="w-4 h-4 rounded-full border border-slate-600"
-                                                                    style={{ backgroundColor: plan.brandColor }}
-                                                                />
-                                                                <span className="text-white font-medium">{plan.brandName}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs text-slate-500">Core Message</label>
-                                                            <p className="text-slate-300 text-sm mt-1 leading-relaxed">
-                                                                {brief?.description.substring(0, 100)}...
-                                                            </p>
-                                                        </div>
+                                                <div className="absolute -right-[180px] top-1/2 -translate-y-1/2 w-[160px] bg-slate-900/90 backdrop-blur-xl border border-white/10 p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none translate-x-[-10px] group-hover:translate-x-0 z-50 shadow-2xl">
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <span className="text-[10px] font-black text-indigo-400">SCENE {idx + 1}</span>
+                                                        <span className="text-[9px] font-bold text-slate-500">{scene.duration}s</span>
                                                     </div>
-                                                </div>
-                                                <div className="bg-gradient-to-br from-indigo-900/50 to-purple-900/50 rounded-xl p-6 border border-indigo-500/30">
-                                                    <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-                                                        <Zap className="text-yellow-400 fill-yellow-400" size={16} />
-                                                        Pro Tip
-                                                    </h3>
-                                                    <p className="text-indigo-200 text-sm">
-                                                        Use Director Studio to customize your video text, brand, and timing.
+                                                    <p className="text-[11px] font-bold text-white truncate mb-1">{scene.title}</p>
+                                                    <p className="text-[9px] text-slate-400 line-clamp-2 leading-relaxed">
+                                                        {scene.mainText || 'Video preview...'}
                                                     </p>
                                                 </div>
+                                            </button>
+                                        );
+                                    })}
+
+                                    <button
+                                        onClick={() => {
+                                            const newScene = { ...plan.scenes[0], id: Date.now(), title: 'New Scene' };
+                                            handlePlanUpdate({ ...plan, scenes: [...plan.scenes, newScene] });
+                                        }}
+                                        className="w-12 h-12 rounded-xl border-2 border-dashed border-slate-800 hover:border-indigo-500/50 hover:bg-indigo-500/10 flex items-center justify-center text-slate-500 hover:text-indigo-400 transition-all mt-4 group"
+                                    >
+                                        <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+                                    </button>
+                                </div>
+
+                                {/* PANE 2: Canvas (Center) */}
+                                <div className="flex-1 bg-[#020617] relative flex flex-col overflow-hidden">
+                                    {/* Ambient Background Glows */}
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[500px] bg-indigo-500/10 blur-[150px] pointer-events-none" />
+                                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent opacity-50" />
+
+                                    <div className="flex-1 flex items-center justify-center p-12">
+                                        <div className="w-full max-w-5xl aspect-video bg-black rounded-3xl overflow-hidden shadow-[0_0_120px_rgba(0,0,0,0.6)] ring-1 ring-white/10 relative group transition-all duration-700 hover:shadow-indigo-500/10 hover:ring-indigo-500/30">
+                                            <RemotionPlayer
+                                                key={`player-${plan.scenes.map(s => s.id).join('-')}`}
+                                                ref={playerRef}
+                                                component={MainVideo}
+                                                inputProps={{ plan }}
+                                                durationInFrames={totalDurationInFrames}
+                                                compositionWidth={1920}
+                                                compositionHeight={1080}
+                                                fps={30}
+                                                style={{ width: '100%', height: '100%' }}
+                                                controls
+                                                autoPlay
+                                                loop
+                                                acknowledgeRemotionLicense
+                                                numberOfSharedAudioTags={20}
+                                            />
+                                            {/* Edge Shine Effect */}
+                                            <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white/5 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                        </div>
+                                    </div>
+
+                                    {/* Floating AI Director Bar */}
+                                    <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6">
+                                        <div className="group bg-slate-900/40 backdrop-blur-3xl border border-white/10 rounded-2xl p-2.5 flex items-center gap-3 shadow-[0_10px_50px_-10px_rgba(0,0,0,0.5)] ring-1 ring-white/5 hover:ring-indigo-500/30 hover:border-indigo-500/20 transition-all duration-500">
+                                            <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-500">
+                                                {isDirectorWorking ? <Loader2 size={20} className="text-white animate-spin" /> : <Wand2 size={20} className="text-white" />}
+                                            </div>
+                                            <div className="flex-1 relative">
+                                                <input
+                                                    value={directorPrompt}
+                                                    onChange={e => setDirectorPrompt(e.target.value)}
+                                                    onKeyDown={e => e.key === 'Enter' && handleDirectorDeploy()}
+                                                    className="w-full bg-transparent border-none text-white text-sm placeholder:text-slate-500 focus:ring-0 outline-none px-2"
+                                                    placeholder="Ask Director: 'Add more kinetic energy' or 'Change music style'..."
+                                                    disabled={isDirectorWorking}
+                                                />
+                                                <div className="absolute -bottom-1 left-2 right-2 h-[1px] bg-indigo-500/0 group-focus-within:bg-indigo-500/50 transition-all" />
+                                            </div>
+                                            <button
+                                                onClick={handleDirectorDeploy}
+                                                disabled={isDirectorWorking || !directorPrompt.trim()}
+                                                className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/30 flex items-center gap-2 disabled:opacity-50"
+                                            >
+                                                <span>{isDirectorWorking ? 'Executing...' : 'Deploy'}</span>
+                                                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                            </button>
+                                        </div>
+                                        {/* Status Glow */}
+                                        <div className="mt-3 flex items-center justify-center gap-4">
+                                            <div className="flex items-center gap-1.5 opacity-50">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                <span className="text-[10px] text-white font-bold uppercase tracking-widest">Groq Llama 3 70B</span>
+                                            </div>
+                                            <div className="h-3 w-[1px] bg-white/10" />
+                                            <div className="flex items-center gap-1.5 opacity-50">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                                <span className="text-[10px] text-white font-bold uppercase tracking-widest">Wan 2.1 Video Ready</span>
                                             </div>
                                         </div>
                                     </div>
-                                </main>
+                                </div>
 
-                                {/* Director Studio Modal */}
-                                {isEditing && plan && (
+                                <div className="w-[400px] border-l border-white/5 bg-slate-950 flex flex-col overflow-hidden">
                                     <ContentEditor
                                         plan={plan}
                                         onUpdate={handlePlanUpdate}
-                                        onClose={() => setIsEditing(false)}
+                                        currentSceneIndex={activeSceneIndex}
+                                        onSceneSelect={setActiveSceneIndex}
+                                        className="static w-full h-full bg-transparent border-none"
                                     />
-                                )}
+                                </div>
                             </div>
                         </div>
                     )}

@@ -89,6 +89,7 @@ export interface BentoItem {
     rowSpan: 1 | 2;
     type: 'stat' | 'feature' | 'image' | 'code';
     title?: string;
+    icon?: string;
     animationDelay?: number;
 }
 
@@ -138,6 +139,8 @@ export interface VideoScene {
     visualDescription?: string;
     wanPrompt?: string;
     voiceoverScript?: string; // specific voiceover script if different from main script
+    backgroundColor?: string;
+    mainTextColor?: string;
     svgContent?: string; // Generated SVG content
     videoUrl?: string; // Generated video URL (e.g. from Wan)
     ctaText?: string;
@@ -147,9 +150,12 @@ export interface VideoScene {
     mobileScreenshotUrl?: string;
     domain?: string;
     notificationText?: string;
+    features?: Array<{ title: string; description: string; icon?: string }>; // For feature lists/widgets
+    ctaUrl?: string; // Specific destination URL for CTAs
 
     // Legacy
     animationType?: AnimationType;
+    voice?: string; // AI Voice model (e.g. en-US-ChristopherNeural)
     voiceoverUrl?: string;
 }
 

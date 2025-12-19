@@ -4,11 +4,15 @@ import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate } fr
 interface PretaaSlot8SatisfactionProps {
     brandColor?: string;
     notificationText?: string;
+    backgroundColor?: string;
+    mainTextColor?: string;
 }
 
 export const PretaaSlot_8_Satisfaction: React.FC<PretaaSlot8SatisfactionProps> = ({
     brandColor = '#3b82f6',
-    notificationText
+    notificationText,
+    backgroundColor,
+    mainTextColor
 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
@@ -23,7 +27,7 @@ export const PretaaSlot_8_Satisfaction: React.FC<PretaaSlot8SatisfactionProps> =
     const rotate = interpolate(frame, [0, 300], [0, 360]);
 
     return (
-        <AbsoluteFill style={{ backgroundColor: '#f8fafc' }}>
+        <AbsoluteFill style={{ backgroundColor: backgroundColor || '#f8fafc' }}>
             {/* Soft Ambient Background Gradients */}
             <div
                 style={{

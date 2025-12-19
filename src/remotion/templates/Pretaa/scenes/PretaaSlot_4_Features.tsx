@@ -31,7 +31,7 @@ const PhoneBackdrop = ({ delay, xOffset }: any) => {
 };
 
 // Crisp Foreground Widget
-const FeatureWidget = ({ x, y, delay, type, content }: any) => {
+const FeatureWidget = ({ x, y, delay, type, content, mainTextColor }: any) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
 
@@ -80,35 +80,41 @@ const FeatureWidget = ({ x, y, delay, type, content }: any) => {
     );
 };
 
-export const PretaaSlot4Features = () => {
+export const PretaaSlot4Features = ({
+    features = [
+        { title: "Cadman Inc.", description: "Renewal date 03/29/22 is coming up in 14 days." },
+        { title: "Hustle Hint", description: "Send an email to customer service to find out what is going on.", icon: "Send email" }
+    ],
+    backgroundColor,
+    mainTextColor
+}: {
+    features?: Array<{ title: string; description: string; icon?: string }>,
+    backgroundColor?: string,
+    mainTextColor?: string
+}) => {
     return (
-        <AbsoluteFill style={{ background: '#0f172a', overflow: 'hidden' }}>
-
+        <AbsoluteFill style={{ background: backgroundColor || '#0f172a', overflow: 'hidden' }}>
             {/* Background Phones Layer */}
             <PhoneBackdrop xOffset={-350} delay={0} />
             <PhoneBackdrop xOffset={0} delay={20} />
             <PhoneBackdrop xOffset={350} delay={40} />
 
-            {/* Foreground Widgets Layer - Matching Frame 4(10).jpg */}
-            <FeatureWidget
-                x="50%" y="40%" delay={30}
-                type="cadman"
-                content={{
-                    title: "Cadman Inc.",
-                    text: "Renewal date 03/29/22 is coming up in 14 days."
-                }}
-            />
-
-            <FeatureWidget
-                x="50%" y="65%" delay={50}
-                type="hustle"
-                content={{
-                    title: "Hustle Hint",
-                    text: "Send an email to customer service to find out what is going on.",
-                    action: "Send email"
-                }}
-            />
-
+            {/* Foreground Widgets Layer - Dynamic */}
+            {features.map((feature, i) => (
+                <FeatureWidget
+                    key={i}
+                    x="50%"
+                    y={`${40 + (i * 25)}%`} // Stagger vertically: 40%, 65%, 90%...
+                    delay={30 + (i * 20)}
+                    type={i === 0 ? "cadman" : "hustle"}
+                    content={{
+                        title: feature.title,
+                        text: feature.description,
+                        action: feature.icon // Using icon field as action text for now
+                    }}
+                    mainTextColor={mainTextColor}
+                />
+            ))}
         </AbsoluteFill>
     );
 };
