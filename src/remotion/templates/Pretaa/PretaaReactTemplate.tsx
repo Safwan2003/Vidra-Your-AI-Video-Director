@@ -10,7 +10,8 @@ import { GenericFeatures } from './scenes/GenericFeatures';
 import { AudioHandler } from '../../components/AudioHandler';
 
 // Types
-import { VideoScene, VideoPlan } from '../../../../types';
+import { VideoScene, VideoPlan, ThemeType } from '../../../../types';
+import { getThemeStyles, ThemeStyles } from './components/ThemeEngine';
 
 // Map generic scenes to components
 // Import Original Slots (Restoring Visuals)
@@ -24,124 +25,155 @@ import { PretaaSlot7Outro } from './scenes/PretaaSlot_7_Outro'; // Is actually m
 import { PretaaSlot_8_Satisfaction } from './scenes/PretaaSlot_8_Satisfaction';
 import { PretaaSlot_9_Final } from './scenes/PretaaSlot_9_Final';
 
+import { PretaaFloatingElements } from './components/FloatingElements';
+
 // Map generic scenes to components
-const SceneRenderer = ({ scene, brand }: { scene: VideoScene, brand: any }) => {
+const SceneRenderer = ({ scene, brand, themeStyles: globalThemeStyles }: { scene: VideoScene, brand: any, themeStyles: ThemeStyles }) => {
+    // Determine theme for this scene
+    const themeStyles = scene.theme ? getThemeStyles(scene.theme, brand.accentColor) : globalThemeStyles;
+
     // Helper to detect scene context
     const title = (scene.title || '').toLowerCase();
     const type = scene.type;
 
+    let content: React.ReactNode;
+
     // 1. INTRO
     if (scene.id === 1) {
-        return <PretaaSlot1Intro
+        content = <PretaaSlot1Intro
             title={scene.mainText || scene.title}
             backgroundColor={scene.backgroundColor}
             mainTextColor={scene.mainTextColor}
+            themeStyles={themeStyles}
         />;
     }
 
     // 2. PROBLEM (High Energy Text)
-    if (scene.id === 2) {
-        return <PretaaSlot2Problem
+    else if (scene.id === 2) {
+        content = <PretaaSlot2Problem
             title={scene.mainText}
             subText={scene.subText}
             backgroundColor={scene.backgroundColor}
             mainTextColor={scene.mainTextColor}
+            themeStyles={themeStyles}
         />;
     }
 
     // 6. CTA / JOURNEY (Final Text) - Check ID 6 carefully as it moved
-    if (scene.id === 6 && type !== 'device_showcase') {
-        return <PretaaSlot5CTA
+    else if (scene.id === 6 && type !== 'device_showcase') {
+        content = <PretaaSlot5CTA
             title={scene.mainText}
             backgroundColor={scene.backgroundColor}
             mainTextColor={scene.mainTextColor}
+            themeStyles={themeStyles}
         />;
-    }
-
-    switch (scene.id) {
-        // 3. SOLUTION
-        case 3:
-            return <PretaaSlot3Solution
-                solutionText={scene.mainText}
-                screenshotUrl={scene.screenshotUrl}
-                backgroundColor={scene.backgroundColor}
-                mainTextColor={scene.mainTextColor}
-            />;
-
-        // 4. FEATURES
-        case 4:
-            // Prefer editor features, fallback to bentoItems
-            const features = (scene.features && scene.features.length > 0) ? scene.features : (scene.bentoItems?.map(item => ({
-                title: item.title || 'Feature',
-                description: item.content || 'Description', // Map content to description
-                icon: item.icon || 'star'
-            })) || []);
-
-            return (
-                <PretaaSlot4Features
-                    features={features}
+    } else {
+        switch (scene.id) {
+            // 3. SOLUTION
+            case 3:
+                content = <PretaaSlot3Solution
+                    solutionText={scene.mainText}
+                    screenshotUrl={scene.screenshotUrl}
                     backgroundColor={scene.backgroundColor}
                     mainTextColor={scene.mainTextColor}
-                />
-            );
+                    themeStyles={themeStyles}
+                />;
+                break;
 
-        // 5. SOCIAL PROOF
-        case 5:
-            return <PretaaSlot6Review
-                quote={scene.mainText}
-                author={scene.subText}
-                backgroundColor={scene.backgroundColor}
-                mainTextColor={scene.mainTextColor}
-            />;
+            // 4. FEATURES
+            case 4:
+                // Prefer editor features, fallback to bentoItems
+                const features = (scene.features && scene.features.length > 0) ? scene.features : (scene.bentoItems?.map(item => ({
+                    title: item.title || 'Feature',
+                    description: item.content || 'Description', // Map content to description
+                    icon: item.icon || 'star'
+                })) || []);
 
-        // 6. DEMO (Device Showcase)
-        case 6:
-            return <PretaaSlot3Solution
-                solutionText={scene.mainText}
-                screenshotUrl={scene.mobileScreenshotUrl || scene.screenshotUrl}
-                backgroundColor={scene.backgroundColor}
-                mainTextColor={scene.mainTextColor}
-            />;
+                content = (
+                    <PretaaSlot4Features
+                        features={features}
+                        backgroundColor={scene.backgroundColor}
+                        mainTextColor={scene.mainTextColor}
+                        themeStyles={themeStyles}
+                    />
+                );
+                break;
 
-        // 7. VISION / DEVICE SHOWCASE
-        case 7:
-            return <PretaaSlot7Outro
-                ctaText={scene.mainText || "The Future"}
-                ctaUrl={scene.ctaUrl || scene.domain}
-                screenshotUrl={scene.screenshotUrl}
-                mobileScreenshotUrl={scene.mobileScreenshotUrl}
-                backgroundColor={scene.backgroundColor}
-                mainTextColor={scene.mainTextColor}
-            />;
+            // 5. SOCIAL PROOF
+            case 5:
+                content = <PretaaSlot6Review
+                    quote={scene.mainText}
+                    author={scene.subText}
+                    backgroundColor={scene.backgroundColor}
+                    mainTextColor={scene.mainTextColor}
+                    themeStyles={themeStyles}
+                />;
+                break;
 
-        // 8. SATISFACTION / RENEWAL
-        case 8:
-            return <PretaaSlot_8_Satisfaction
-                brandColor={brand?.accentColor}
-                notificationText={scene.notificationText || scene.mainText}
-                backgroundColor={scene.backgroundColor}
-                mainTextColor={scene.mainTextColor}
-            />;
+            // 6. DEMO (Device Showcase)
+            case 6:
+                content = <PretaaSlot3Solution
+                    solutionText={scene.mainText}
+                    screenshotUrl={scene.mobileScreenshotUrl || scene.screenshotUrl}
+                    backgroundColor={scene.backgroundColor}
+                    mainTextColor={scene.mainTextColor}
+                    themeStyles={themeStyles}
+                />;
+                break;
 
-        // 9. FINAL CTA
-        case 9: // For Scene 9 specifically
-            return <PretaaSlot_9_Final
-                brandName={brand.name}
-                domain={scene.domain || "pretaa.com"}
-                ctaText={scene.ctaText}
-                backgroundColor={scene.backgroundColor}
-                mainTextColor={scene.mainTextColor}
-            />;
+            // 7. VISION / DEVICE SHOWCASE
+            case 7:
+                content = <PretaaSlot7Outro
+                    ctaText={scene.mainText || "The Future"}
+                    ctaUrl={scene.ctaUrl || scene.domain}
+                    screenshotUrl={scene.screenshotUrl}
+                    mobileScreenshotUrl={scene.mobileScreenshotUrl}
+                    backgroundColor={scene.backgroundColor}
+                    mainTextColor={scene.mainTextColor}
+                    themeStyles={themeStyles}
+                />;
+                break;
 
-        default:
-            // Generic Fallback
-            return (
-                <GenericIntro
+            // 8. SATISFACTION / RENEWAL
+            case 8:
+                content = <PretaaSlot_8_Satisfaction
                     brandColor={brand?.accentColor}
-                    bubbles={[scene.title || "Scene", scene.type]}
-                />
-            );
+                    notificationText={scene.notificationText || scene.mainText}
+                    backgroundColor={scene.backgroundColor}
+                    mainTextColor={scene.mainTextColor}
+                    themeStyles={themeStyles}
+                />;
+                break;
+
+            // 9. FINAL CTA
+            case 9: // For Scene 9 specifically
+                content = <PretaaSlot_9_Final
+                    brandName={brand.name}
+                    domain={scene.domain || "pretaa.com"}
+                    ctaText={scene.ctaText}
+                    backgroundColor={scene.backgroundColor}
+                    mainTextColor={scene.mainTextColor}
+                    themeStyles={themeStyles}
+                />;
+                break;
+
+            default:
+                // Generic Fallback
+                content = (
+                    <GenericIntro
+                        brandColor={brand?.accentColor}
+                        bubbles={[scene.title || "Scene", scene.type]}
+                    />
+                );
+        }
     }
+
+    return (
+        <AbsoluteFill>
+            {content}
+            <PretaaFloatingElements elements={scene.elements} />
+        </AbsoluteFill>
+    );
 };
 
 // Pretaa Template Props - NOW DYNAMIC
@@ -191,9 +223,20 @@ export const PretaaReactTemplate: React.FC<PretaaReactTemplateProps> = ({ plan }
     const effectivePlan = (plan && scenes.length > 0) ? plan : {
         brandName: 'Pretaa',
         brandColor: '#3b82f6',
+        theme: 'glassmorphism' as ThemeType,
         scenes: [
-            { id: 1, type: 'slot_transition', duration: 10, title: 'Intro', mainText: 'Welcome' },
-            { id: 2, type: 'kinetic_typo', duration: 10, title: 'Problem', mainText: 'Wasting Resources?' },
+            {
+                id: 1, type: 'slot_transition', duration: 10, title: 'Intro', mainText: 'Welcome', elements: [
+                    { type: 'notification', text: 'New Lead: John Doe', position: { top: '20%', left: '80%' }, delay: 20 },
+                    { type: 'feature_badge', text: 'AI Powered', position: { top: '30%', left: '20%' }, delay: 40, color: '#10b981' }
+                ]
+            },
+            {
+                id: 2, type: 'kinetic_typo', duration: 10, title: 'Problem', mainText: 'Wasting Resources?', elements: [
+                    { type: 'stat_card', label: 'Churn Rate', value: '24%', position: { top: '70%', left: '15%' }, delay: 30, color: '#ef4444' },
+                    { type: 'stat_card', label: 'LTV', value: '$1.2k', position: { top: '75%', left: '85%' }, delay: 50 }
+                ]
+            },
             { id: 3, type: 'device_showcase', duration: 10, title: 'Solution', mainText: 'Solved' },
             { id: 4, type: 'bento_grid', duration: 7, title: 'Features' },
             { id: 5, type: 'social_proof', duration: 6, title: 'Review' },
@@ -201,25 +244,41 @@ export const PretaaReactTemplate: React.FC<PretaaReactTemplateProps> = ({ plan }
             { id: 7, type: 'flat_screenshot', duration: 6, title: 'Vision' },
             { id: 8, type: 'isometric_illustration', duration: 7, title: 'Satisfaction' },
             { id: 9, type: 'cta_finale', duration: 7, title: 'Final CTA' }
-            // Total: 9 scenes, 60s
         ] as VideoScene[]
     };
 
     const effectiveScenes = effectivePlan.scenes;
     const effectiveBrand = {
-        accentColor: effectivePlan.brandColor || '#3b82f6',
+        accentColor: effectivePlan.globalDesign?.primaryColor || effectivePlan.brandColor || '#3b82f6',
         name: effectivePlan.brandName || 'Pretaa'
     };
 
+    const effectiveTheme: ThemeType = effectivePlan.theme || 'modern';
+    const themeStyles = getThemeStyles(effectiveTheme, effectiveBrand.accentColor);
+
+    // Calculate total duration
+    const totalDurationSeconds = effectiveScenes.reduce((sum, scene) => sum + (scene.duration || 5), 0);
+    const totalDurationFrames = totalDurationSeconds * 30;
+
+    // Debug logging
+    console.log('📊 PretaaTemplate Duration Analysis:');
+    console.log(`   Total Scenes: ${effectiveScenes.length}`);
+    console.log(`   Scene Durations:`, effectiveScenes.map(s => `${s.type}: ${s.duration}s`));
+    console.log(`   Total Duration: ${totalDurationSeconds}s (${totalDurationFrames} frames)`);
+
     return (
-        <AbsoluteFill>
+        <AbsoluteFill style={{
+            background: plan.globalDesign?.backgroundColor || themeStyles.background,
+            fontFamily: plan.globalDesign?.bodyFont || 'Inter',
+            color: plan.globalDesign?.textColor || '#ffffff'
+        }}>
             <AudioHandler scenes={effectiveScenes} audioTrack="https://res.cloudinary.com/ds5317tui/video/upload/v1734341907/Corporate_Upbeat_Background_Music_For_Videos_royalty_free_No_Copyright_Content_t4f9tp.mp3" />
 
             <TransitionSeries>
                 {effectiveScenes.map((scene, index) => (
                     <React.Fragment key={scene.id || index}>
                         <TransitionSeries.Sequence durationInFrames={Math.max(1, Math.floor((scene.duration || 5) * 30))}>
-                            <SceneRenderer scene={scene} brand={effectiveBrand} />
+                            <SceneRenderer scene={scene} brand={effectiveBrand} themeStyles={themeStyles} />
                         </TransitionSeries.Sequence>
 
                         {/* Add transition between scenes (except the last one) */}

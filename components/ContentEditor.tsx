@@ -24,7 +24,7 @@ export const ContentEditor: React.FC<ContentEditorProps> = ({
 }) => {
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [isRewriting, setIsRewriting] = useState<{ [key: string]: boolean }>({});
-    const [activeTab, setActiveTab] = useState<'content' | 'visual' | 'audio' | 'code'>('content');
+    const [activeTab, setActiveTab] = useState<'content' | 'design' | 'visual' | 'audio' | 'code'>('content');
 
     // Update Helpers
     const handleSceneUpdate = (updates: Partial<VideoScene>) => {
@@ -100,7 +100,7 @@ export const ContentEditor: React.FC<ContentEditorProps> = ({
 
                 {/* Tab Switcher */}
                 <div className="flex p-1 bg-slate-900/50 rounded-xl border border-white/5">
-                    {(['content', 'visual', 'audio', 'code'] as const).map(tab => (
+                    {(['content', 'design', 'visual', 'audio', 'code'] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -185,6 +185,202 @@ export const ContentEditor: React.FC<ContentEditorProps> = ({
                                         onChange={e => handleSceneUpdate({ title: e.target.value })}
                                         className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none"
                                     />
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                )}
+
+                {activeTab === 'design' && (
+                    <div className="animate-in fade-in slide-in-from-right-2 duration-300 space-y-6">
+                        <section>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Global Brand Settings</label>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs text-slate-400 font-medium ml-1">Brand Name</label>
+                                    <input
+                                        value={plan.brandName || ''}
+                                        onChange={e => onUpdate({ ...plan, brandName: e.target.value })}
+                                        className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 font-medium ml-1">Primary Color</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="color"
+                                                value={plan.globalDesign?.primaryColor || plan.brandColor || '#6366f1'}
+                                                onChange={e => onUpdate({
+                                                    ...plan,
+                                                    brandColor: e.target.value,
+                                                    globalDesign: { ...plan.globalDesign!, primaryColor: e.target.value }
+                                                })}
+                                                className="w-8 h-8 rounded-lg border-0 p-0 bg-transparent cursor-pointer"
+                                            />
+                                            <input
+                                                value={plan.globalDesign?.primaryColor || plan.brandColor || '#6366f1'}
+                                                onChange={e => onUpdate({
+                                                    ...plan,
+                                                    brandColor: e.target.value,
+                                                    globalDesign: { ...plan.globalDesign!, primaryColor: e.target.value }
+                                                })}
+                                                className="flex-1 bg-slate-900/50 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:border-indigo-500 outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 font-medium ml-1">Secondary Color</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="color"
+                                                value={plan.globalDesign?.secondaryColor || '#cbd5e1'}
+                                                onChange={e => onUpdate({
+                                                    ...plan,
+                                                    globalDesign: { ...plan.globalDesign!, secondaryColor: e.target.value }
+                                                })}
+                                                className="w-8 h-8 rounded-lg border-0 p-0 bg-transparent cursor-pointer"
+                                            />
+                                            <input
+                                                value={plan.globalDesign?.secondaryColor || '#cbd5e1'}
+                                                onChange={e => onUpdate({
+                                                    ...plan,
+                                                    globalDesign: { ...plan.globalDesign!, secondaryColor: e.target.value }
+                                                })}
+                                                className="flex-1 bg-slate-900/50 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:border-indigo-500 outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 font-medium ml-1">Accent Color</label>
+                                        <input
+                                            type="color"
+                                            value={plan.globalDesign?.accentColor || plan.globalDesign?.primaryColor || '#6366f1'}
+                                            onChange={e => onUpdate({
+                                                ...plan,
+                                                globalDesign: { ...plan.globalDesign!, accentColor: e.target.value }
+                                            })}
+                                            className="w-full h-10 rounded-lg border-0 p-0 bg-transparent cursor-pointer"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 font-medium ml-1">Background</label>
+                                        <input
+                                            type="color"
+                                            value={plan.globalDesign?.backgroundColor || '#0a0a0a'}
+                                            onChange={e => onUpdate({
+                                                ...plan,
+                                                globalDesign: { ...plan.globalDesign!, backgroundColor: e.target.value }
+                                            })}
+                                            className="w-full h-10 rounded-lg border-0 p-0 bg-transparent cursor-pointer"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 font-medium ml-1">Text Color</label>
+                                        <input
+                                            type="color"
+                                            value={plan.globalDesign?.textColor || '#ffffff'}
+                                            onChange={e => onUpdate({
+                                                ...plan,
+                                                globalDesign: { ...plan.globalDesign!, textColor: e.target.value }
+                                            })}
+                                            className="w-full h-10 rounded-lg border-0 p-0 bg-transparent cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="pt-6 border-t border-white/5">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Typography & Style</label>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 font-medium ml-1">Heading Font</label>
+                                        <select
+                                            value={plan.globalDesign?.headingFont || 'Inter'}
+                                            onChange={e => onUpdate({
+                                                ...plan,
+                                                globalDesign: { ...plan.globalDesign!, headingFont: e.target.value as any }
+                                            })}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none appearance-none"
+                                        >
+                                            <option value="Inter">Inter (Clean)</option>
+                                            <option value="Roboto">Roboto (Modern)</option>
+                                            <option value="Playfair Display">Playfair Display (Serif)</option>
+                                            <option value="Montserrat">Montserrat (Geometric)</option>
+                                            <option value="Lato">Lato (Balanced)</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 font-medium ml-1">Body Font</label>
+                                        <select
+                                            value={plan.globalDesign?.bodyFont || plan.globalDesign?.headingFont || 'Inter'}
+                                            onChange={e => onUpdate({
+                                                ...plan,
+                                                globalDesign: { ...plan.globalDesign!, bodyFont: e.target.value as any }
+                                            })}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none appearance-none"
+                                        >
+                                            <option value="Inter">Inter (Clean)</option>
+                                            <option value="Roboto">Roboto (Modern)</option>
+                                            <option value="Playfair Display">Playfair Display (Serif)</option>
+                                            <option value="Montserrat">Montserrat (Geometric)</option>
+                                            <option value="Lato">Lato (Balanced)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 font-medium ml-1">Animation Speed</label>
+                                        <select
+                                            value={plan.globalDesign?.animationSpeed || 'medium'}
+                                            onChange={e => onUpdate({
+                                                ...plan,
+                                                globalDesign: { ...plan.globalDesign!, animationSpeed: e.target.value as any }
+                                            })}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none appearance-none"
+                                        >
+                                            <option value="slow">Slow</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="fast">Fast</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 font-medium ml-1">Corner Rounding</label>
+                                        <select
+                                            value={plan.globalDesign?.borderRadius || 'medium'}
+                                            onChange={e => onUpdate({
+                                                ...plan,
+                                                globalDesign: { ...plan.globalDesign!, borderRadius: e.target.value as any }
+                                            })}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none appearance-none"
+                                        >
+                                            <option value="none">Square</option>
+                                            <option value="small">Small</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="large">Large</option>
+                                            <option value="full">Round</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 font-medium ml-1">Transition Style</label>
+                                        <select
+                                            value={plan.globalDesign?.transitionStyle || 'slide'}
+                                            onChange={e => onUpdate({
+                                                ...plan,
+                                                globalDesign: { ...plan.globalDesign!, transitionStyle: e.target.value as any }
+                                            })}
+                                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none appearance-none"
+                                        >
+                                            <option value="slide">Slide</option>
+                                            <option value="fade">Fade</option>
+                                            <option value="wipe">Wipe</option>
+                                            <option value="zoom">Zoom</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </section>

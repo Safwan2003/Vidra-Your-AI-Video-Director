@@ -147,16 +147,20 @@ const GlassMoney = ({ delay }: any) => {
     );
 };
 
+import { ThemeStyles } from '../components/ThemeEngine';
+
 export const PretaaSlot2Problem = ({
     title,
     subText,
     backgroundColor,
-    mainTextColor
+    mainTextColor,
+    themeStyles
 }: {
     title?: string,
     subText?: string,
     backgroundColor?: string,
-    mainTextColor?: string
+    mainTextColor?: string,
+    themeStyles?: ThemeStyles
 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
@@ -197,16 +201,20 @@ export const PretaaSlot2Problem = ({
                 transform: `translateY(${interpolate(frame, [20, 40], [20, 0])}px)`
             }}>
                 <h2 style={{
-                    fontSize: 72, color: mainTextColor || '#1e293b', margin: 0, fontWeight: 800,
-                    letterSpacing: '-2px',
+                    fontSize: 72,
+                    ...themeStyles?.heading,
+                    color: mainTextColor || themeStyles?.heading?.color || '#1e293b',
+                    margin: 0,
                     textShadow: '0 10px 30px rgba(0,0,0,0.1)'
                 }}>
                     {title || "Wasting Resources?"}
                 </h2>
                 {subText && (
                     <p style={{
-                        fontSize: 32, color: mainTextColor ? `${mainTextColor}cc` : '#64748b', margin: '10px 0 0', fontWeight: 500,
-                        letterSpacing: '-0.5px'
+                        fontSize: 32,
+                        ...themeStyles?.text,
+                        color: mainTextColor ? `${mainTextColor}cc` : (themeStyles?.text?.color ? `${themeStyles.text.color}cc` : '#64748b'),
+                        margin: '10px 0 0',
                     }}>
                         {subText}
                     </p>

@@ -1,16 +1,19 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, Img } from 'remotion';
+import { ThemeStyles } from '../components/ThemeEngine';
 
 export const PretaaSlot6Review = ({
     quote,
     author,
     backgroundColor,
-    mainTextColor
+    mainTextColor,
+    themeStyles
 }: {
     quote?: string,
     author?: string,
     backgroundColor?: string,
-    mainTextColor?: string
+    mainTextColor?: string,
+    themeStyles?: ThemeStyles
 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();

@@ -76,14 +76,18 @@ const JourneyCard = ({ x, y, text, title, sub, delay, direction = 'top' }: any) 
     );
 };
 
+import { ThemeStyles } from '../components/ThemeEngine';
+
 export const PretaaSlot5CTA = ({
     title,
     backgroundColor,
-    mainTextColor
+    mainTextColor,
+    themeStyles
 }: {
     title?: string,
     backgroundColor?: string,
-    mainTextColor?: string
+    mainTextColor?: string,
+    themeStyles?: ThemeStyles
 }) => {
     const frame = useCurrentFrame();
 

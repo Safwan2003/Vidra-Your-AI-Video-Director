@@ -10,13 +10,16 @@ interface PretaaSlot7OutroProps {
     mainTextColor?: string;
 }
 
-export const PretaaSlot7Outro: React.FC<PretaaSlot7OutroProps> = ({
+import { ThemeStyles } from '../components/ThemeEngine';
+
+export const PretaaSlot7Outro: React.FC<PretaaSlot7OutroProps & { themeStyles?: ThemeStyles }> = ({
     ctaText = 'Get Started',
     ctaUrl,
     screenshotUrl,
     mobileScreenshotUrl,
     backgroundColor,
-    mainTextColor
+    mainTextColor,
+    themeStyles
 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();

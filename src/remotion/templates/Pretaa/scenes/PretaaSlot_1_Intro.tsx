@@ -172,14 +172,18 @@ const ChatBubble = ({ x, y, text, delay, direction = 'left', active = false }: a
     );
 };
 
+import { ThemeStyles } from '../components/ThemeEngine';
+
 export const PretaaSlot1Intro = ({
     title,
     backgroundColor,
-    mainTextColor
+    mainTextColor,
+    themeStyles
 }: {
     title?: string,
     backgroundColor?: string,
-    mainTextColor?: string
+    mainTextColor?: string,
+    themeStyles?: ThemeStyles
 }) => {
     return (
         <AbsoluteFill style={{
@@ -230,12 +234,12 @@ export const PretaaSlot1Intro = ({
             }}>
                 <h1 style={{
                     fontSize: 120,
-                    fontWeight: 900,
-                    color: mainTextColor || '#0f172a',
-                    letterSpacing: '-0.04em',
+                    ...themeStyles?.heading,
+                    color: mainTextColor || themeStyles?.heading?.color || '#0f172a',
+                    letterSpacing: themeStyles?.heading?.letterSpacing || '-0.04em',
                     textShadow: '0 4px 30px rgba(0,0,0,0.1)',
                     margin: 0,
-                    opacity: 0, // In a real implementation this would animate in
+                    opacity: 0,
                     animation: 'fadeInUp 1s forwards 0.5s'
                 }}>
                     {title || "Welcome"}

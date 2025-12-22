@@ -25,10 +25,14 @@ export const RemotionRoot: React.FC = () => {
                     if (!videoProps.plan || !videoProps.plan.scenes) {
                         return { durationInFrames: 300 };
                     }
-                    // Calculate actual duration from plan
-                    const totalDuration = videoProps.plan.scenes.reduce((acc, scene) => acc + Number(scene.duration || 0), 0);
+                    // Calculate actual duration from plan (in seconds, then convert to frames)
+                    const totalDurationSeconds = videoProps.plan.scenes.reduce((acc, scene) => acc + Number(scene.duration || 5), 0);
+                    const totalDurationFrames = Math.max(30, Math.floor(totalDurationSeconds * 30)); // Convert seconds to frames (30 FPS)
+
+                    console.log(`🎬 MainVideo Duration: ${totalDurationSeconds}s = ${totalDurationFrames} frames`);
+
                     return {
-                        durationInFrames: Math.max(1, Math.floor(totalDuration)) // Ensure at least 1 frame, integer
+                        durationInFrames: totalDurationFrames
                     };
                 }}
             />

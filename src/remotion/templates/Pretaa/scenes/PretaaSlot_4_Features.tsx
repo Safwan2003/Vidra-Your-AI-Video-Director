@@ -30,8 +30,10 @@ const PhoneBackdrop = ({ delay, xOffset }: any) => {
     );
 };
 
+import { ThemeStyles } from '../components/ThemeEngine';
+
 // Crisp Foreground Widget
-const FeatureWidget = ({ x, y, delay, type, content, mainTextColor }: any) => {
+const FeatureWidget = ({ x, y, delay, type, content, mainTextColor, themeStyles }: any) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
 
@@ -48,14 +50,18 @@ const FeatureWidget = ({ x, y, delay, type, content, mainTextColor }: any) => {
             <div style={{
                 background: 'white',
                 padding: '24px',
-                borderRadius: 24,
-                boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+                borderRadius: themeStyles?.borderRadius ?? 24,
+                ...themeStyles?.card,
                 minWidth: 320,
                 display: 'flex', flexDirection: 'column', gap: 12
             }}>
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{content.title}</div>
+                    <div style={{
+                        fontSize: 20,
+                        ...themeStyles?.heading,
+                        color: themeStyles?.heading?.color || '#0f172a'
+                    }}>{content.title}</div>
                     {type === 'cadman' && (
                         <div style={{ display: 'flex', gap: 6 }}>
                             <span style={{ fontSize: 10, background: '#1e293b', color: 'white', padding: '4px 8px', borderRadius: 6, fontWeight: 700 }}>CUSTOMER</span>
@@ -86,11 +92,13 @@ export const PretaaSlot4Features = ({
         { title: "Hustle Hint", description: "Send an email to customer service to find out what is going on.", icon: "Send email" }
     ],
     backgroundColor,
-    mainTextColor
+    mainTextColor,
+    themeStyles
 }: {
     features?: Array<{ title: string; description: string; icon?: string }>,
     backgroundColor?: string,
-    mainTextColor?: string
+    mainTextColor?: string,
+    themeStyles?: ThemeStyles
 }) => {
     return (
         <AbsoluteFill style={{ background: backgroundColor || '#0f172a', overflow: 'hidden' }}>
@@ -113,6 +121,7 @@ export const PretaaSlot4Features = ({
                         action: feature.icon // Using icon field as action text for now
                     }}
                     mainTextColor={mainTextColor}
+                    themeStyles={themeStyles}
                 />
             ))}
         </AbsoluteFill>

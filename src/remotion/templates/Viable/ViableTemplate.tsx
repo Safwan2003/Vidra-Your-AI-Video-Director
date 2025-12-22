@@ -16,76 +16,104 @@ import { Slot5Trust } from './scenes/Slot_5_Trust';
 import { Slot6Outro } from './scenes/Slot_6_Outro';
 
 // Scene Renderer
-const SceneRenderer = ({ scene, brand }: { scene: VideoScene, brand: any }) => {
-    switch (scene.id) {
-        // 1. PROBLEM
-        case 1:
-            return <Slot1Problem
+// Scene Renderer
+const SceneRenderer = ({ scene, brand, globalDesign }: { scene: VideoScene, brand: any, globalDesign?: any }) => {
+
+    // Apply Global Fonts and Colors
+    const containerStyle: React.CSSProperties = {
+        fontFamily: globalDesign?.bodyFont || 'Inter',
+        width: '100%',
+        height: '100%',
+        color: globalDesign?.textColor || '#ffffff'
+    };
+
+    const commonProps = {
+        accentColor: globalDesign?.accentColor || globalDesign?.primaryColor || brand.accentColor,
+        primaryColor: globalDesign?.primaryColor || brand.accentColor,
+        secondaryColor: globalDesign?.secondaryColor,
+        backgroundColor: globalDesign?.backgroundColor,
+        borderRadius: globalDesign?.borderRadius,
+        headingFont: globalDesign?.headingFont || 'Inter',
+        bodyFont: globalDesign?.bodyFont || 'Inter',
+        animationSpeed: globalDesign?.animationSpeed || 'medium'
+    };
+
+    let content;
+
+    switch (scene.type) {
+        case 'kinetic_typo':
+        case 'title_card': // New type mapped to simple text
+            content = <Slot1Problem
                 brandName={brand.name}
-                accentColor={brand.accentColor}
-                tagline={scene.subText || "The old way is broken."}
-                screenshotUrl={scene.screenshotUrl}
+                accentColor={commonProps.accentColor}
+                tagline={scene.subText || scene.mainText || "Title Scene"}
+                screenshotUrl={scene.screenshotUrl} // Optional bg
             />;
+            break;
 
-        // 2. TRANSITION / INTRO
-        case 2:
-            return <Slot2Transition
-                headline={scene.mainText || "There is a better way."}
-                subheadline={scene.subText || "Introducing the future."}
-                accentColor={brand.accentColor}
+        case 'slot_transition':
+            content = <Slot2Transition
+                headline={scene.mainText || "Transition"}
+                subheadline={scene.subText || ""}
+                accentColor={commonProps.accentColor}
             />;
+            break;
 
-        // 3. HERO / DASHBOARD
-        case 3:
-            return <Slot3Hero
+        case 'device_showcase':
+        case 'image_full': // New type mapped to hero/device
+            content = <Slot3Hero
                 screenUrl={scene.screenshotUrl}
                 screenshotUrl={scene.screenshotUrl}
                 title={scene.mainText}
                 productName={brand.name}
-                accentColor={brand.accentColor}
-                features={scene.features} // Pass features for dynamic stats
+                accentColor={commonProps.accentColor}
+                features={scene.features}
             />;
+            break;
 
-        // 4. FEATURES
-        case 4:
+        case 'bento_grid':
             // Prefer editor features, fallback to bentoItems
             const features = (scene.features && scene.features.length > 0) ? scene.features : (scene.bentoItems?.map(item => ({
                 title: item.title || 'Feature',
-                description: item.content || 'Description', // Map content to description
+                description: item.content || 'Description',
                 icon: 'star'
             })) || []);
 
-            return <Slot4Features
+            content = <Slot4Features
                 features={features}
-                sectionTitle={scene.mainText || "Powerful Features"}
-                accentColor={brand.accentColor}
+                sectionTitle={scene.mainText || "Key Features"}
+                accentColor={commonProps.accentColor}
             />;
+            break;
 
-        // 5. TRUST / SOCIAL PROOF
-        case 5:
-            // Convert mainText/subText to feedback items
+        case 'social_proof':
             const feedbacks = scene.mainText ? [
                 { text: scene.mainText, urgency: 'Low' as const, icon: '⭐' },
                 { text: scene.subText || "Great service!", urgency: 'High' as const, icon: '🚀' }
             ] : [];
 
-            return <Slot5Trust
+            content = <Slot5Trust
                 feedbacks={feedbacks}
-                accentColor={brand.accentColor}
+                accentColor={commonProps.accentColor}
             />;
+            break;
 
-        // 6. OUTRO
-        case 6:
-            return <Slot6Outro
+        case 'cta_finale':
+            content = <Slot6Outro
                 brandName={brand.name}
                 ctaText={scene.ctaText || scene.mainText || "Get Started"}
                 ctaUrl={scene.ctaUrl || scene.domain || "viable.com"}
-                accentColor={brand.accentColor}
+                accentColor={commonProps.accentColor}
             />;
+            break;
 
         default:
-            return <AbsoluteFill style={{ background: 'red' }}>Unknown Scene {scene.id}</AbsoluteFill>
+            content = <AbsoluteFill style={{ background: '#1e293b', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div>Unknown Scene Type: {scene.type}</div>
+            </AbsoluteFill>;
     }
+
+    return <div style={containerStyle}>{content}</div>;
 };
 
 interface ViableReactTemplateProps {
@@ -101,15 +129,25 @@ export const ViableTemplate: React.FC<ViableReactTemplateProps> = ({ plan }) => 
 
     const scenes = plan?.scenes || [];
 
-    // Fallback if no plan (Dev mode)
+    // Fallback if no plan (Dev mode) - 60 seconds total
     const effectiveScenes = scenes.length > 0 ? scenes : [
-        { id: 1, duration: 5, type: 'kinetic_typo', title: 'Problem' },
-        { id: 2, duration: 4, type: 'slot_transition', title: 'Solution' },
-        { id: 3, duration: 6, type: 'device_showcase', title: 'Hero' },
-        { id: 4, duration: 6, type: 'bento_grid', title: 'Features' },
-        { id: 5, duration: 5, type: 'social_proof', title: 'Trust' },
-        { id: 6, duration: 5, type: 'cta_finale', title: 'Outro' }
+        { id: 1, duration: 8, type: 'kinetic_typo', title: 'Problem' },
+        { id: 2, duration: 7, type: 'slot_transition', title: 'Solution' },
+        { id: 3, duration: 12, type: 'device_showcase', title: 'Hero' },
+        { id: 4, duration: 12, type: 'bento_grid', title: 'Features' },
+        { id: 5, duration: 10, type: 'social_proof', title: 'Trust' },
+        { id: 6, duration: 11, type: 'cta_finale', title: 'Outro' }
     ] as VideoScene[];
+
+    // Calculate total duration
+    const totalDurationSeconds = effectiveScenes.reduce((sum, scene) => sum + (scene.duration || 5), 0);
+    const totalDurationFrames = totalDurationSeconds * 30;
+
+    // Debug logging
+    console.log('📊 ViableTemplate Duration Analysis:');
+    console.log(`   Total Scenes: ${effectiveScenes.length}`);
+    console.log(`   Scene Durations:`, effectiveScenes.map(s => `${s.type}: ${s.duration}s`));
+    console.log(`   Total Duration: ${totalDurationSeconds}s (${totalDurationFrames} frames)`);
 
     // Transitions
     const stiffSpring = springTiming({ config: { damping: 200, stiffness: 200, mass: 1 }, durationInFrames: 35 });
@@ -117,14 +155,14 @@ export const ViableTemplate: React.FC<ViableReactTemplateProps> = ({ plan }) => 
     const panUp = slide({ direction: 'from-bottom' });
 
     return (
-        <AbsoluteFill style={{ background: '#071a14' }}>
+        <AbsoluteFill style={{ background: plan.globalDesign?.backgroundStyle === 'video' ? 'transparent' : '#071a14' }}>
             <AudioHandler scenes={effectiveScenes} audioTrack={null} />
 
             <TransitionSeries>
                 {effectiveScenes.map((scene, index) => (
                     <React.Fragment key={scene.id || index}>
                         <TransitionSeries.Sequence durationInFrames={Math.max(1, Math.floor((scene.duration || 5) * 30))}>
-                            <SceneRenderer scene={scene} brand={brand} />
+                            <SceneRenderer scene={scene} brand={brand} globalDesign={plan.globalDesign} />
                         </TransitionSeries.Sequence>
 
                         {/* Transitions between scenes */}

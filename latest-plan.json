@@ -1,0 +1,119 @@
+{
+  "brandName": "Marky Tech",
+  "brandColor": "#3498db",
+  "template": "pretaa",
+  "scenes": [
+    {
+      "id": 1,
+      "type": "slot_intro",
+      "duration": 5,
+      "title": "Welcome to Marky Tech",
+      "voiceoverScript": "Welcome to Marky Tech, your partner in digital transformation. We help businesses of all sizes succeed in the digital age.",
+      "mainText": "Welcome to Marky Tech",
+      "voiceoverUrl": "/voiceover/2153e36a-0e51-44b1-a7ba-aabb8d28275f.mp3"
+    },
+    {
+      "id": 2,
+      "type": "kinetic_typo",
+      "duration": 5,
+      "mainText": "Streamline Your Operations",
+      "subText": "Effortlessly manage tasks, teams, and projects with our custom software solutions",
+      "voiceoverScript": "Are you tired of using multiple tools to manage your business? Our custom software solutions can help you streamline your operations and increase productivity.",
+      "voiceoverUrl": "/voiceover/8e9d0bc5-1d8e-43bc-8b40-7e9ad419ad79.mp3"
+    },
+    {
+      "id": 3,
+      "type": "device_showcase",
+      "duration": 6,
+      "mainText": "Custom Software Solutions",
+      "subText": "Scalable, secure, and tailored to your business needs",
+      "voiceoverScript": "At Marky Tech, we specialize in creating custom software solutions that meet the unique needs of each client. From web applications to mobile apps, we've got you covered.",
+      "voiceoverUrl": "/voiceover/a80b6984-4608-42f7-85ed-d0d55b640ec3.mp3"
+    },
+    {
+      "id": 4,
+      "type": "bento_grid",
+      "duration": 6,
+      "features": [
+        {
+          "title": "Task Management",
+          "description": "Easily assign and track tasks across teams"
+        },
+        {
+          "title": "Real-time Collaboration",
+          "description": "Enhance team productivity with real-time collaboration tools"
+        },
+        {
+          "title": "Customizable Dashboards",
+          "description": "Get a bird's eye view of your business with customizable dashboards"
+        }
+      ],
+      "voiceoverScript": "Our custom software solutions come with a range of features designed to help you succeed. From task management to real-time collaboration, we've got the tools you need to take your business to the next level.",
+      "bentoItems": [
+        {
+          "title": "Task Management",
+          "content": "Easily assign and track tasks across teams",
+          "colSpan": 1,
+          "rowSpan": 1
+        },
+        {
+          "title": "Real-time Collaboration",
+          "content": "Enhance team productivity with real-time collaboration tools",
+          "colSpan": 1,
+          "rowSpan": 1
+        },
+        {
+          "title": "Customizable Dashboards",
+          "content": "Get a bird's eye view of your business with customizable dashboards",
+          "colSpan": 1,
+          "rowSpan": 1
+        }
+      ],
+      "voiceoverUrl": "/voiceover/b1f153de-99ad-4fad-b25d-55c53ac77219.mp3"
+    },
+    {
+      "id": 5,
+      "type": "kinetic_text",
+      "duration": 4,
+      "title": "What Our Clients Say",
+      "voiceoverScript": "But don't just take our word for it. Our clients have seen real results from our custom software solutions.",
+      "mainText": "What Our Clients Say",
+      "voiceoverUrl": "/voiceover/e14535a6-536a-4d73-ab0b-f335ce9bf4d4.mp3"
+    },
+    {
+      "id": 6,
+      "type": "social_proof",
+      "duration": 5,
+      "quote": "Marky Tech's custom software solution has revolutionized our business. We've seen a significant increase in productivity and efficiency.",
+      "author": "John Doe, CEO of XYZ Corporation",
+      "voiceoverScript": "Our clients have seen real results from our custom software solutions. From increased productivity to improved efficiency, we've helped businesses of all sizes succeed.",
+      "voiceoverUrl": "/voiceover/9d5da08f-84eb-477b-a522-bb786075ccac.mp3"
+    },
+    {
+      "id": 7,
+      "type": "flat_screenshot",
+      "duration": 6,
+      "mainText": "Elevate Your Business",
+      "voiceoverScript": "Imagine having a custom software solution that meets the unique needs of your business. With Marky Tech, you can elevate your business and take it to the next level.",
+      "screenshotUrl": "blob:http://localhost:3000/90a94f90-64b9-45a0-8188-78748dca1c63",
+      "voiceoverUrl": "/voiceover/09ac9c77-bc3d-40fa-8365-42270ce884fb.mp3"
+    },
+    {
+      "id": 8,
+      "type": "isometric_illustration",
+      "duration": 5,
+      "notificationText": "Your custom software solution is ready",
+      "voiceoverScript": "With Marky Tech, you can trust that your custom software solution will be delivered on time and to your exact specifications.",
+      "voiceoverUrl": "/voiceover/857612d1-1bd1-46df-a4e0-18bb21978c8e.mp3"
+    },
+    {
+      "id": 9,
+      "type": "cta_finale",
+      "duration": 6,
+      "ctaText": "Elevate Your Business Today",
+      "domain": "https://www.markytech.com",
+      "voiceoverScript": "Don't wait any longer to elevate your business. Contact us today to learn more about our custom software solutions and how we can help you succeed.",
+      "voiceoverUrl": "/voiceover/cbbc97e1-70dd-43cd-9462-d2edecc27234.mp3"
+    }
+  ]
+}

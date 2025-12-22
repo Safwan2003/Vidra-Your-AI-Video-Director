@@ -10,13 +10,16 @@ interface PretaaSlot9FinalProps {
     mainTextColor?: string;
 }
 
-export const PretaaSlot_9_Final: React.FC<PretaaSlot9FinalProps> = ({
+import { ThemeStyles } from '../components/ThemeEngine';
+
+export const PretaaSlot_9_Final: React.FC<PretaaSlot9FinalProps & { themeStyles?: ThemeStyles }> = ({
     brandName = 'pretaa',
     brandColor = '#3b82f6',
     ctaText = 'Contact Us Today',
     domain = 'pretaa.com',
     backgroundColor,
-    mainTextColor
+    mainTextColor,
+    themeStyles
 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();

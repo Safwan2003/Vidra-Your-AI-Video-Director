@@ -1,5 +1,5 @@
 export type SceneType = 'kinetic_text' | 'ui_mockup' | 'isometric_illustration' | 'device_showcase' | 'data_visualization' | 'split_comparison' | 'cta_finale' | 'bento_grid' | 'device_cloud'
-    | '3d_laptop_orbit' | '3d_phone_float' | 'exploded_ui_view' | 'floating_ui_layers' | 'social_proof' | 'flat_screenshot' | 'slot_transition' | 'kinetic_typo';
+    | '3d_laptop_orbit' | '3d_phone_float' | 'exploded_ui_view' | 'floating_ui_layers' | 'social_proof' | 'flat_screenshot' | 'slot_transition' | 'kinetic_typo' | 'title_card' | 'image_full';
 
 export type AnimationType = 'pop-up' | 'slide-in' | 'fade' | 'stack' | 'typewriter';
 export type CameraAngle = 'isometric_left' | 'isometric_right' | 'cinematic_low' | 'straight_on';
@@ -8,6 +8,56 @@ export type TransitionType = 'cut' | 'fade' | 'wipe_right' | 'zoom_through';
 export type TextEffectStyle = 'explode' | 'gradient_slide' | 'glitch' | 'typewriter' | 'stagger_up';
 export type MediaType = 'image' | 'video';
 export type DeviceType = 'laptop' | 'phone' | 'tablet' | 'browser_window';
+
+
+export type FontType = 'Inter' | 'Roboto' | 'Playfair Display' | 'Montserrat' | 'Lato';
+export type CornerStyle = 'none' | 'small' | 'medium' | 'large' | 'full';
+export type TransitionStyle = 'fade' | 'slide' | 'wipe' | 'zoom';
+export type IndustryType = 'saas' | 'fintech' | 'ecommerce' | 'healthcare' | 'education' | 'entertainment' | 'productivity' | 'security' | 'ai_ml' | 'other';
+export type ToneType = 'professional' | 'playful' | 'luxury' | 'minimal' | 'bold' | 'friendly';
+export type EmotionType = 'trust' | 'excitement' | 'curiosity' | 'urgency' | 'calm';
+export type AnimationSpeed = 'slow' | 'medium' | 'fast';
+
+export interface BrandPersonality {
+    industry: IndustryType;
+    tone: ToneType;
+    targetEmotion: EmotionType;
+    visualMetaphor?: string; // e.g., "rocket launch", "shield", "growth chart"
+}
+
+export interface GlobalDesign {
+    // Typography System (heading + body)
+    headingFont: FontType;
+    bodyFont: FontType;
+
+    // Color System (full palette)
+    primaryColor: string;
+    secondaryColor: string;
+    accentColor: string;
+    backgroundColor: string;
+    textColor: string;
+
+    // Visual Style
+    borderRadius: CornerStyle;
+    transitionStyle: TransitionStyle;
+    animationSpeed: AnimationSpeed;
+    backgroundStyle: 'solid' | 'gradient' | 'mesh' | 'video';
+
+    // Brand Personality
+    personality?: BrandPersonality;
+}
+
+export type LayoutVariant = 'default' | 'split' | 'centered' | 'offset';
+export type AnimationStyleType = 'fade' | 'slide' | 'zoom' | 'typewriter' | 'reveal';
+export type PacingType = 'slow' | 'medium' | 'fast';
+export type EmphasisType = 'text' | 'visual' | 'balanced';
+
+export interface SceneConfiguration {
+    layoutVariant?: LayoutVariant;
+    animationStyle?: AnimationStyleType;
+    pacing?: PacingType;
+    emphasis?: EmphasisType;
+}
 
 // --- AGENTIC CORE TYPES ---
 
@@ -141,6 +191,7 @@ export interface VideoScene {
     voiceoverScript?: string; // specific voiceover script if different from main script
     backgroundColor?: string;
     mainTextColor?: string;
+    theme?: ThemeType;
     svgContent?: string; // Generated SVG content
     videoUrl?: string; // Generated video URL (e.g. from Wan)
     ctaText?: string;
@@ -152,6 +203,9 @@ export interface VideoScene {
     notificationText?: string;
     features?: Array<{ title: string; description: string; icon?: string }>; // For feature lists/widgets
     ctaUrl?: string; // Specific destination URL for CTAs
+
+    // Scene Configuration (for deep personalization)
+    config?: SceneConfiguration;
 
     // Legacy
     animationType?: AnimationType;
@@ -233,10 +287,14 @@ export interface PretaaTemplateData {
     };
 }
 
+export type ThemeType = 'modern' | 'glassmorphism' | 'punchy_saas' | 'neo_brutalism' | 'minimalist';
+
 // --- PLAN & BRIEF ---
 export interface VideoPlan {
     brandName: string;
     brandColor: string;
+    theme?: ThemeType;
+    globalDesign?: GlobalDesign;
     template?: 'generic' | 'viable' | 'pretaa'; // Select implementation
     templateData?: ViableTemplateData | PretaaTemplateData; // Data for the specific template
     archetype?: string;

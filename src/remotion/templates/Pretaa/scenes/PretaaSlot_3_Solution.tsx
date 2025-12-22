@@ -25,20 +25,24 @@ const AnimatedLetter = ({ letter, index, delay, color }: any) => {
     );
 };
 
+import { ThemeStyles } from '../components/ThemeEngine';
+
 export const PretaaSlot3Solution = ({
     solutionText = "Solution",
     tagline = "The Solution Is Here",
     accentColor = "#1e1b4b",
     screenshotUrl,
     backgroundColor,
-    mainTextColor
+    mainTextColor,
+    themeStyles
 }: {
     solutionText?: string,
     tagline?: string,
     accentColor?: string,
     screenshotUrl?: string,
     backgroundColor?: string,
-    mainTextColor?: string
+    mainTextColor?: string,
+    themeStyles?: ThemeStyles
 }) => {
     const frame = useCurrentFrame();
 

@@ -8,11 +8,14 @@ interface PretaaSlot8SatisfactionProps {
     mainTextColor?: string;
 }
 
-export const PretaaSlot_8_Satisfaction: React.FC<PretaaSlot8SatisfactionProps> = ({
+import { ThemeStyles } from '../components/ThemeEngine';
+
+export const PretaaSlot_8_Satisfaction: React.FC<PretaaSlot8SatisfactionProps & { themeStyles?: ThemeStyles }> = ({
     brandColor = '#3b82f6',
     notificationText,
     backgroundColor,
-    mainTextColor
+    mainTextColor,
+    themeStyles
 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();

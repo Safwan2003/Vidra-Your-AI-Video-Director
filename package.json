@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"npm run dev:client\" \"npm run proxy\" --kill-others --names \"CLIENT,PROXY\" --prefix-colors \"cyan,magenta\"",
+    "dev:client": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "render": "node render.ts",
@@ -39,6 +40,7 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "ts-node": "^10.9.2",
     "typescript": "~5.8.2",

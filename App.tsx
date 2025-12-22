@@ -241,17 +241,15 @@ export default function App() {
 
 
     // Calculate total duration for Remotion (Safe calculation)
-    const validPlan = plan && plan.scenes && Array.isArray(plan.scenes);
+    // Calculate duration dynamically from actual scenes
+    const validPlan = plan && plan.scenes && plan.scenes.length > 0;
+    const calculatedDuration = validPlan
+        ? Math.floor(plan.scenes.reduce((acc, s) => acc + Math.max(0.1, s.duration || 5), 0) * 30)
+        : 1800; // Default to 60 seconds if no plan
 
-    // For template mode, use fixed duration (710 frames = ~23.6s at 30fps)
-    const isTemplateMode = plan?.template === 'viable';
-    const templateDuration = 2700; // Sum of all Viable template slots (90s)
+    const totalDurationInFrames = Math.max(30, calculatedDuration);
 
-    const calculatedDuration = isTemplateMode
-        ? templateDuration
-        : (validPlan ? Math.floor(plan.scenes.reduce((acc, s) => acc + Math.max(0.1, s.duration || 0), 0) * 30) : 0);
-
-    const totalDurationInFrames = Math.max(1, calculatedDuration);
+    console.log(`🎥 App.tsx Player Duration: ${calculatedDuration / 30}s = ${calculatedDuration} frames`);
 
     const seekToScene = (index: number) => {
         if (!plan || !playerRef.current) return;
@@ -615,10 +613,13 @@ export default function App() {
                                     {plan.scenes.map((scene, idx) => {
                                         const isActive = idx === activeSceneIndex;
                                         return (
-                                            <button
+                                            <div
                                                 key={`${scene.id}-${idx}`}
                                                 onClick={() => seekToScene(idx)}
-                                                className={`group relative w-12 aspect-[9/16] rounded-xl overflow-hidden border-2 transition-all duration-300 ${isActive
+                                                role="button"
+                                                tabIndex={0}
+                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') seekToScene(idx); }}
+                                                className={`group relative w-12 aspect-[9/16] rounded-xl overflow-hidden border-2 transition-all duration-300 cursor-pointer ${isActive
                                                     ? 'border-indigo-500 ring-4 ring-indigo-500/20 scale-110 z-10 shadow-[0_0_20px_rgba(99,102,241,0.3)]'
                                                     : 'border-slate-800 hover:border-slate-600 grayscale hover:grayscale-0'
                                                     }`}
@@ -663,7 +664,7 @@ export default function App() {
                                                         {scene.mainText || 'Video preview...'}
                                                     </p>
                                                 </div>
-                                            </button>
+                                            </div>
                                         );
                                     })}
 
